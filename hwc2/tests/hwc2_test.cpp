@@ -71,6 +71,23 @@ public:
         ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to register callback";
     }
 
+    void get_display_type(hwc2_display_t display, hwc2_display_type_t *out_type,
+            hwc2_error_t *out_err)
+    {
+        HWC2_PFN_GET_DISPLAY_TYPE pfn = (HWC2_PFN_GET_DISPLAY_TYPE)
+                get_function(HWC2_FUNCTION_GET_DISPLAY_TYPE);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, (int32_t *) out_type);
+    }
+
+    void get_display_type(hwc2_display_t display, hwc2_display_type_t *out_type)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(get_display_type(display, out_type, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to get display type";
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -198,4 +215,24 @@ TEST_F(hwc2_test, REGISTER_CALLBACK_null_data)
     for (hwc2_callback_descriptor_t descriptor: callback_descriptors)
         ASSERT_NO_FATAL_FAILURE(register_callback(descriptor, data,
                 []() { return; }));
+}
+
+TEST_F(hwc2_test, GET_DISPLAY_TYPE)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    hwc2_display_type_t type;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_type(display, &type));
+    EXPECT_EQ(type, HWC2_DISPLAY_TYPE_PHYSICAL) << "failed to return correct"
+            " display type";
+}
+
+TEST_F(hwc2_test, GET_DISPLAY_TYPE_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    hwc2_display_type_t type;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_type(display, &type, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
 }
