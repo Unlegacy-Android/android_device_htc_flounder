@@ -29,7 +29,8 @@ class hwc2_test : public testing::Test {
 public:
     hwc2_test()
         : hwc2_device(nullptr),
-          layers() { }
+          layers(),
+          active_displays() { }
 
     virtual void SetUp()
     {
@@ -55,6 +56,12 @@ public:
             layer = itr->second;
             itr++;
             destroy_layer(display, layer);
+        }
+
+        for (auto itr = active_displays.begin(); itr != active_displays.end();) {
+            display = *itr;
+            itr++;
+            set_power_mode(display, HWC2_POWER_MODE_OFF);
         }
 
         if (hwc2_device)
@@ -226,6 +233,50 @@ public:
                 << config;
     }
 
+    void get_doze_support(hwc2_display_t display, int32_t *out_support,
+            hwc2_error_t *out_err)
+    {
+        HWC2_PFN_GET_DOZE_SUPPORT pfn = (HWC2_PFN_GET_DOZE_SUPPORT)
+                get_function(HWC2_FUNCTION_GET_DOZE_SUPPORT);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, out_support);
+    }
+
+    void get_doze_support(hwc2_display_t display, int32_t *out_support)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(get_doze_support(display, out_support, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to get doze support on"
+                " display " << display;
+    }
+
+    void set_power_mode(hwc2_display_t display, hwc2_power_mode_t mode,
+            hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_POWER_MODE pfn = (HWC2_PFN_SET_POWER_MODE)
+                get_function(HWC2_FUNCTION_SET_POWER_MODE);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, mode);
+
+        if (*out_err != HWC2_ERROR_NONE)
+            return;
+
+        if (mode == HWC2_POWER_MODE_OFF)
+            active_displays.erase(display);
+        else
+            active_displays.insert(display);
+    }
+
+    void set_power_mode(hwc2_display_t display, hwc2_power_mode_t mode)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_power_mode(display, mode, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set power mode "
+                << getPowerModeName(mode) << " on display " << display;
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -300,6 +351,10 @@ protected:
     /* Store all created layers that have not been destroyed. If an ASSERT_*
      * fails, then destroy the layers on exit */
     std::set<std::pair<hwc2_display_t, hwc2_layer_t>> layers;
+
+    /* Store the power mode state. If it is not HWC2_POWER_MODE_OFF when
+     * tearing down the test cases, change it to HWC2_POWER_MODE_OFF */
+    std::set<hwc2_display_t> active_displays;
 };
 
 
@@ -728,4 +783,133 @@ TEST_F(hwc2_test, SET_ACTIVE_CONFIG_bad_config)
 
     ASSERT_NO_FATAL_FAILURE(set_active_config(display, config, &err));
     EXPECT_EQ(err, HWC2_ERROR_BAD_CONFIG) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, GET_DOZE_SUPPORT)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    int32_t support = -1;
+
+    ASSERT_NO_FATAL_FAILURE(get_doze_support(display, &support));
+
+    EXPECT_TRUE(support == 0 || support == 1) << "invalid doze support value";
+}
+
+TEST_F(hwc2_test, GET_DOZE_SUPPORT_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    int32_t support = -1;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_doze_support(display, &support, &err));
+
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, SET_POWER_MODE)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+
+    int32_t support = -1;
+    ASSERT_NO_FATAL_FAILURE(get_doze_support(display, &support));
+    if (!support)
+        return;
+
+    ASSERT_EQ(support, 1) << "invalid doze support value";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_DOZE));
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display,
+            HWC2_POWER_MODE_DOZE_SUSPEND));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, SET_POWER_MODE_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+
+    int32_t support = -1;
+    ASSERT_NO_FATAL_FAILURE(get_doze_support(display, &support, &err));
+    if (!support)
+        return;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_DOZE, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_DOZE_SUSPEND,
+            &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, SET_POWER_MODE_bad_parameter)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    hwc2_power_mode_t mode = (hwc2_power_mode_t)
+            (HWC2_POWER_MODE_DOZE_SUSPEND + 1);
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, mode, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_PARAMETER) << "returned wrong error code "
+            << mode;
+}
+
+TEST_F(hwc2_test, SET_POWER_MODE_unsupported)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    int32_t support = -1;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_doze_support(display, &support, &err));
+    if (support != 1)
+        return;
+
+    ASSERT_EQ(support, 1) << "invalid doze support value";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_DOZE, &err));
+    EXPECT_EQ(err, HWC2_ERROR_UNSUPPORTED) << "returned wrong error code";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_DOZE_SUSPEND,
+            &err));
+    EXPECT_EQ(err, HWC2_ERROR_UNSUPPORTED) <<  "returned wrong error code";
+}
+
+TEST_F(hwc2_test, SET_POWER_MODE_stress)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+
+    int32_t support = -1;
+    ASSERT_NO_FATAL_FAILURE(get_doze_support(display, &support));
+    if (!support)
+        return;
+
+    ASSERT_EQ(support, 1) << "invalid doze support value";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_DOZE));
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_DOZE));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display,
+            HWC2_POWER_MODE_DOZE_SUSPEND));
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display,
+            HWC2_POWER_MODE_DOZE_SUSPEND));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
 }
