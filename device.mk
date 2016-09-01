@@ -193,7 +193,8 @@ PRODUCT_PACKAGES += \
     power.flounder \
     lights.flounder \
     sensors.flounder \
-    thermal.flounder
+    thermal.flounder \
+    hwcomposer.flounder
 
 # Filesystem Packages
 PRODUCT_PACKAGES += \
