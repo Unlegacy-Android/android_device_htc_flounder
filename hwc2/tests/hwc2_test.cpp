@@ -190,6 +190,42 @@ public:
                 << display;
     }
 
+    void get_active_config(hwc2_display_t display, hwc2_config_t *out_config,
+            hwc2_error_t *out_err)
+    {
+        HWC2_PFN_GET_ACTIVE_CONFIG pfn = (HWC2_PFN_GET_ACTIVE_CONFIG)
+                get_function(HWC2_FUNCTION_GET_ACTIVE_CONFIG);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, out_config);
+    }
+
+    void get_active_config(hwc2_display_t display, hwc2_config_t *out_config)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(get_active_config(display, out_config, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to get active config on"
+                " display " << display;
+    }
+
+    void set_active_config(hwc2_display_t display, hwc2_config_t config,
+            hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_ACTIVE_CONFIG pfn = (HWC2_PFN_SET_ACTIVE_CONFIG)
+                get_function(HWC2_FUNCTION_SET_ACTIVE_CONFIG);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, config);
+    }
+
+    void set_active_config(hwc2_display_t display, hwc2_config_t config)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set active config "
+                << config;
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -611,4 +647,85 @@ TEST_F(hwc2_test, GET_DISPLAY_CONFIGS_duplicate)
     std::set<hwc2_config_t> configs_set(configs.begin(), configs.end());
     EXPECT_EQ(configs.size(), configs_set.size()) << "returned duplicate"
             " configs";
+}
+
+TEST_F(hwc2_test, GET_ACTIVE_CONFIG)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_config_t active_config;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_config(display, &active_config));
+
+        EXPECT_EQ(active_config, config) << "failed to get active config";
+    }
+}
+
+TEST_F(hwc2_test, GET_ACTIVE_CONFIG_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    hwc2_config_t active_config;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_active_config(display, &active_config, &err));
+
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, GET_ACTIVE_CONFIG_bad_config)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_config_t active_config;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    if (configs.empty())
+        return;
+
+    ASSERT_NO_FATAL_FAILURE(get_active_config(display, &active_config, &err));
+    if (err == HWC2_ERROR_NONE)
+        EXPECT_TRUE(std::find(configs.begin(), configs.end(), active_config)
+                != configs.end()) << "active config is not found in configs for"
+                " display";
+    else
+        EXPECT_EQ(err, HWC2_ERROR_BAD_CONFIG) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, SET_ACTIVE_CONFIG)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs)
+        EXPECT_NO_FATAL_FAILURE(set_active_config(display, config));
+}
+
+TEST_F(hwc2_test, SET_ACTIVE_CONFIG_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    hwc2_config_t config = 0;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(set_active_config(display, config, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, SET_ACTIVE_CONFIG_bad_config)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    hwc2_config_t config;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_invalid_config(display, &config));
+
+    ASSERT_NO_FATAL_FAILURE(set_active_config(display, config, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_CONFIG) << "returned wrong error code";
 }
