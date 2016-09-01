@@ -310,6 +310,39 @@ public:
         vsync_cv.notify_all();
     }
 
+    void get_display_name(hwc2_display_t display, std::string *out_name,
+                hwc2_error_t *out_err)
+    {
+        HWC2_PFN_GET_DISPLAY_NAME pfn = (HWC2_PFN_GET_DISPLAY_NAME)
+                get_function(HWC2_FUNCTION_GET_DISPLAY_NAME);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        uint32_t size = 0;
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, &size, nullptr);
+        if (*out_err != HWC2_ERROR_NONE)
+            return;
+
+        ASSERT_GE(size, (uint32_t) 0) << "failed to get valid display name";
+
+        char *name = new char[size];
+
+        ASSERT_NE(name, nullptr) << "failed to allocate the memory for name";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, &size, name);
+
+        out_name->assign(name);
+        delete[] name;
+    }
+
+    void get_display_name(hwc2_display_t display, std::string *out_name)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(get_display_name(display, out_name, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to get display name for "
+                << display;
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -1109,4 +1142,23 @@ TEST_F(hwc2_test, SET_VSYNC_ENABLED_no_callback)
     ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE));
 
     ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, GET_DISPLAY_NAME)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::string name;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_name(display, &name));
+    EXPECT_FALSE(name.empty()) << "failed to get display name";
+}
+
+TEST_F(hwc2_test, GET_DISPLAY_NAME_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    std::string name;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_name(display, &name, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
 }
