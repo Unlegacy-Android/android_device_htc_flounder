@@ -25,12 +25,19 @@
 #undef HWC2_INCLUDE_STRINGIFICATION
 #undef HWC2_USE_CPP11
 
+void hwc2_test_vsync_callback(hwc2_callback_data_t callback_data,
+        hwc2_display_t display, int64_t timestamp);
+
 class hwc2_test : public testing::Test {
 public:
     hwc2_test()
         : hwc2_device(nullptr),
           layers(),
-          active_displays() { }
+          active_displays(),
+          vsync_mutex(),
+          vsync_cv(),
+          vsync_display(),
+          vsync_timestamp(-1) { }
 
     virtual void SetUp()
     {
@@ -277,6 +284,32 @@ public:
                 << getPowerModeName(mode) << " on display " << display;
     }
 
+    void set_vsync_enabled(hwc2_display_t display, hwc2_vsync_t enabled,
+            hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_VSYNC_ENABLED pfn = (HWC2_PFN_SET_VSYNC_ENABLED)
+                get_function(HWC2_FUNCTION_SET_VSYNC_ENABLED);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, enabled);
+    }
+
+    void set_vsync_enabled(hwc2_display_t display, hwc2_vsync_t enabled)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, enabled, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set vsync enabled "
+                << getVsyncName(enabled);
+    }
+
+    void vsync_callback(hwc2_display_t display, int64_t timestamp)
+    {
+        std::lock_guard<std::mutex::mutex> lock(vsync_mutex);
+        vsync_display = display;
+        vsync_timestamp = timestamp;
+        vsync_cv.notify_all();
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -346,6 +379,31 @@ protected:
         *out_config = config;
     }
 
+    void enable_vsync(hwc2_display_t display)
+    {
+        ASSERT_NO_FATAL_FAILURE(register_callback(HWC2_CALLBACK_VSYNC,
+                this, (hwc2_function_pointer_t) hwc2_test_vsync_callback));
+        ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_ENABLE));
+    }
+
+    void disable_vsync(hwc2_display_t display)
+    {
+        ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE));
+    }
+
+    void wait_for_vsync(hwc2_display_t *out_display = nullptr,
+            int64_t *out_timestamp = nullptr)
+    {
+        std::unique_lock<std::mutex> lock(vsync_mutex);
+        ASSERT_EQ(vsync_cv.wait_for(lock, std::chrono::seconds(3)),
+                std::cv_status::no_timeout) << "timed out attempting to get"
+                " vsync callback";
+        if (out_display)
+            *out_display = vsync_display;
+        if (out_timestamp)
+            *out_timestamp = vsync_timestamp;
+    }
+
     hwc2_device_t *hwc2_device;
 
     /* Store all created layers that have not been destroyed. If an ASSERT_*
@@ -355,7 +413,20 @@ protected:
     /* Store the power mode state. If it is not HWC2_POWER_MODE_OFF when
      * tearing down the test cases, change it to HWC2_POWER_MODE_OFF */
     std::set<hwc2_display_t> active_displays;
+
+    std::mutex vsync_mutex;
+    std::condition_variable vsync_cv;
+    hwc2_display_t vsync_display;
+    int64_t vsync_timestamp;
 };
+
+void hwc2_test_vsync_callback(hwc2_callback_data_t callback_data,
+        hwc2_display_t display, int64_t timestamp)
+{
+    if (callback_data)
+        static_cast<hwc2_test *>(callback_data)->vsync_callback(display,
+                timestamp);
+}
 
 
 static const std::array<hwc2_function_descriptor_t, 42> required_functions = {{
@@ -910,6 +981,132 @@ TEST_F(hwc2_test, SET_POWER_MODE_stress)
             HWC2_POWER_MODE_DOZE_SUSPEND));
     ASSERT_NO_FATAL_FAILURE(set_power_mode(display,
             HWC2_POWER_MODE_DOZE_SUSPEND));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, SET_VSYNC_ENABLED)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    hwc2_callback_data_t data = (hwc2_callback_data_t) "data";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(register_callback(HWC2_CALLBACK_VSYNC, data,
+            []() { return; }));
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_ENABLE));
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, SET_VSYNC_ENABLED_callback)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    hwc2_display_t received_display;
+    int64_t received_timestamp;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(enable_vsync(display));
+
+    ASSERT_NO_FATAL_FAILURE(wait_for_vsync(&received_display,
+            &received_timestamp));
+
+    EXPECT_EQ(received_display, display) << "failed to get corret display";
+    EXPECT_GE(received_timestamp, 0) << "failed to get valid timestamp";
+
+    ASSERT_NO_FATAL_FAILURE(disable_vsync(display));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, SET_VSYNC_ENABLED_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    hwc2_callback_data_t data = (hwc2_callback_data_t) "data";
+
+    ASSERT_NO_FATAL_FAILURE(register_callback(HWC2_CALLBACK_VSYNC, data,
+            []() { return; }));
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_ENABLE,
+            &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE,
+            &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, SET_VSYNC_ENABLED_bad_parameter)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    hwc2_callback_data_t data = (hwc2_callback_data_t) "data";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(register_callback(HWC2_CALLBACK_VSYNC, data,
+            []() { return; }));
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_INVALID,
+            &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_PARAMETER) << "returned wrong error code";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, SET_VSYNC_ENABLED_stress)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+
+    hwc2_callback_data_t data = (hwc2_callback_data_t) "data";
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(register_callback(HWC2_CALLBACK_VSYNC, data,
+            []() { return; }));
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE));
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_ENABLE));
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_ENABLE));
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE));
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE));
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, SET_VSYNC_ENABLED_no_callback_no_power)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    uint secs = 1;
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_ENABLE));
+
+    sleep(secs);
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE));
+}
+
+TEST_F(hwc2_test, SET_VSYNC_ENABLED_no_callback)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    uint secs = 1;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_ENABLE));
+
+    sleep(secs);
+
+    ASSERT_NO_FATAL_FAILURE(set_vsync_enabled(display, HWC2_VSYNC_DISABLE));
 
     ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
 }
