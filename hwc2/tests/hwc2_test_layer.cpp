@@ -104,6 +104,11 @@ hwc2_blend_mode_t hwc2_test_layer::get_blend_mode() const
     return blend_mode.get();
 }
 
+const std::pair<int32_t, int32_t> hwc2_test_layer::get_buffer_area() const
+{
+    return buffer_area.get();
+}
+
 const hwc_color_t hwc2_test_layer::get_color() const
 {
     return color.get();

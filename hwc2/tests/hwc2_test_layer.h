@@ -45,6 +45,7 @@ public:
     bool advance();
 
     hwc2_blend_mode_t      get_blend_mode() const;
+    const std::pair<int32_t, int32_t> get_buffer_area() const;
     const hwc_color_t      get_color() const;
     hwc2_composition_t     get_composition() const;
     const std::pair<int32_t, int32_t> get_cursor() const;

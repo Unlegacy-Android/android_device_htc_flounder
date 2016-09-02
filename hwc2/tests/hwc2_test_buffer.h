@@ -18,9 +18,12 @@
 #define _HWC2_TEST_BUFFER_GENERATOR_H
 
 #include <android-base/unique_fd.h>
+#include <set>
+
 #include <hardware/hwcomposer2.h>
 
 class hwc2_test_buffer_generator;
+class hwc2_test_layers;
 
 class hwc2_test_buffer {
 public:
@@ -30,11 +33,19 @@ public:
     void update_buffer_area(int32_t buffer_width, int32_t buffer_height);
     void update_format(android_pixel_format_t format);
 
+    int  get(buffer_handle_t *out_handle, int32_t *out_fence,
+            const hwc2_test_layers *test_layers,
+            const std::set<hwc2_layer_t> *client_layers);
     int  get(buffer_handle_t *out_handle, int32_t *out_fence);
+
     void set(buffer_handle_t handle, int32_t fence);
 
 protected:
     void close_fence();
+
+    int  get(buffer_handle_t *out_handle, int32_t *out_fence,
+            const hwc2_test_layers *test_layers,
+            const std::set<hwc2_layer_t> *client_layers, bool save_handle);
 
     std::unique_ptr<hwc2_test_buffer_generator> buffer_generator;
 

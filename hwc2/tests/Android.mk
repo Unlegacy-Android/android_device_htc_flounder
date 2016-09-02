@@ -45,6 +45,7 @@ LOCAL_SRC_FILES := \
     hwc2_test_properties.cpp \
     hwc2_test_layer.cpp \
     hwc2_test_layers.cpp \
-    hwc2_test_buffer.cpp
+    hwc2_test_buffer.cpp \
+    hwc2_test_client_target.cpp
 
 include $(BUILD_NATIVE_TEST)
