@@ -27,6 +27,9 @@ LOCAL_CFLAGS += \
     -fno-builtin
 LOCAL_SHARED_LIBRARIES := libcutils libutils libhardware
 LOCAL_STATIC_LIBRARIES := libbase libadf libadfhwc
-LOCAL_SRC_FILES := hwc2_test.cpp
+LOCAL_SRC_FILES := \
+    hwc2_test.cpp \
+    hwc2_test_properties.cpp \
+    hwc2_test_layer.cpp
 
 include $(BUILD_NATIVE_TEST)
