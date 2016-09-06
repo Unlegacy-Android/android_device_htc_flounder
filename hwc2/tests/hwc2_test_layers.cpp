@@ -20,6 +20,13 @@
 hwc2_test_layers::hwc2_test_layers(const std::vector<hwc2_layer_t> &layers,
         hwc2_test_coverage_t coverage, int32_t display_width,
         int32_t display_height)
+    : hwc2_test_layers(layers, coverage, display_width,
+        display_height, std::map<hwc2_test_property_t, hwc2_test_coverage_t>()) { }
+
+hwc2_test_layers::hwc2_test_layers(const std::vector<hwc2_layer_t> &layers,
+        hwc2_test_coverage_t coverage, int32_t display_width,
+        int32_t display_height, const std::map<hwc2_test_property_t,
+        hwc2_test_coverage_t> &coverage_exceptions)
     : test_layers(),
       display_width(display_width),
       display_height(display_height),
@@ -28,7 +35,7 @@ hwc2_test_layers::hwc2_test_layers(const std::vector<hwc2_layer_t> &layers,
     for (auto layer: layers)
         test_layers.emplace(std::piecewise_construct,
                 std::forward_as_tuple(layer), std::forward_as_tuple(coverage,
-                display_width, display_height));
+                display_width, display_height, coverage_exceptions));
 
     /* Iterate over the layers in order and assign z orders in the same order.
      * This allows us to iterate over z orders in the same way when computing
@@ -40,6 +47,7 @@ hwc2_test_layers::hwc2_test_layers(const std::vector<hwc2_layer_t> &layers,
 
     set_visible_regions();
 }
+
 
 std::string hwc2_test_layers::dump() const
 {

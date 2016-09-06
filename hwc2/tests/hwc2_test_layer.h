@@ -18,6 +18,7 @@
 #define _HWC2_TEST_LAYER_H
 
 #include <android-base/unique_fd.h>
+#include <map>
 
 #include "hwc2_test_properties.h"
 
@@ -31,6 +32,10 @@ class hwc2_test_layer {
 public:
     hwc2_test_layer(hwc2_test_coverage_t coverage, int32_t display_width,
             int32_t display_height);
+
+    hwc2_test_layer(hwc2_test_coverage_t coverage, int32_t display_width,
+            int32_t display_height, const std::map<hwc2_test_property_t,
+            hwc2_test_coverage_t> &coverage_exceptions);
 
     std::string dump() const;
 

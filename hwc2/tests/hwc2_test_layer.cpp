@@ -18,21 +18,43 @@
 
 #include "hwc2_test_layer.h"
 
+hwc2_test_coverage_t get_coverage(hwc2_test_property_t property,
+        hwc2_test_coverage_t coverage, const std::map<hwc2_test_property_t,
+        hwc2_test_coverage_t> &coverage_exceptions)
+{
+    auto exception = coverage_exceptions.find(property);
+    return (exception != coverage_exceptions.end())? exception->second: coverage;
+}
+
 hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage,
         int32_t display_width, int32_t display_height)
+    : hwc2_test_layer(coverage, display_width, display_height,
+            std::map<hwc2_test_property_t, hwc2_test_coverage_t>()) { }
+
+hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage,
+        int32_t display_width, int32_t display_height, const std::map<
+        hwc2_test_property_t, hwc2_test_coverage_t> &coverage_exceptions)
     : buffer(),
-      blend_mode(coverage),
-      buffer_area(coverage, display_width, display_height),
-      color(coverage),
-      composition(coverage),
-      cursor(coverage, display_width, display_height),
-      dataspace(coverage),
-      display_frame(coverage, display_width, display_height),
-      format(coverage),
-      plane_alpha(coverage),
-      source_crop(coverage),
-      surface_damage(coverage),
-      transform(coverage),
+      blend_mode(get_coverage(HWC2_TEST_BLEND_MODE, coverage,
+            coverage_exceptions)),
+      buffer_area(get_coverage(HWC2_TEST_BUFFER_AREA, coverage,
+            coverage_exceptions), display_width, display_height),
+      color(get_coverage(HWC2_TEST_COLOR, coverage, coverage_exceptions)),
+      composition(get_coverage(HWC2_TEST_COMPOSITION, coverage,
+            coverage_exceptions)),
+      cursor(get_coverage(HWC2_TEST_CURSOR, coverage, coverage_exceptions),
+            display_width, display_height),
+      dataspace(get_coverage(HWC2_TEST_DATASPACE, coverage, coverage_exceptions)),
+      display_frame(get_coverage(HWC2_TEST_DISPLAY_FRAME, coverage,
+            coverage_exceptions), display_width, display_height),
+      format(get_coverage(HWC2_TEST_FORMAT, coverage, coverage_exceptions)),
+      plane_alpha(get_coverage(HWC2_TEST_PLANE_ALPHA, coverage,
+            coverage_exceptions)),
+      source_crop(get_coverage(HWC2_TEST_SOURCE_CROP, coverage,
+            coverage_exceptions)),
+      surface_damage(get_coverage(HWC2_TEST_SURFACE_DAMAGE, coverage,
+            coverage_exceptions)),
+      transform(get_coverage(HWC2_TEST_TRANSFORM, coverage, coverage_exceptions)),
       visible_region(),
       z_order(-1)
 {

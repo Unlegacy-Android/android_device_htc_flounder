@@ -768,6 +768,56 @@ public:
         ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set client target";
     }
 
+    void present_display(hwc2_display_t display, int32_t *out_present_fence,
+            hwc2_error_t *out_err)
+    {
+        HWC2_PFN_PRESENT_DISPLAY pfn = (HWC2_PFN_PRESENT_DISPLAY)
+                get_function(HWC2_FUNCTION_PRESENT_DISPLAY);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, out_present_fence);
+    }
+
+    void present_display(hwc2_display_t display, int32_t *out_present_fence)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(present_display(display, out_present_fence,
+                &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to present display";
+    }
+
+    void get_release_fences(hwc2_display_t display,
+            std::vector<hwc2_layer_t> *out_layers,
+            std::vector<int32_t> *out_fences, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_GET_RELEASE_FENCES pfn = (HWC2_PFN_GET_RELEASE_FENCES)
+                get_function(HWC2_FUNCTION_GET_RELEASE_FENCES);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        uint32_t num_elements = 0;
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, &num_elements,
+                nullptr, nullptr);
+        if (*out_err != HWC2_ERROR_NONE)
+            return;
+
+        out_layers->resize(num_elements);
+        out_fences->resize(num_elements);
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, &num_elements,
+                out_layers->data(), out_fences->data());
+    }
+
+    void get_release_fences(hwc2_display_t display,
+            std::vector<hwc2_layer_t> *out_layers,
+            std::vector<int32_t> *out_fences)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(get_release_fences(display, out_layers,
+                out_fences, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to present display";
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -880,6 +930,22 @@ protected:
                 HWC2_ATTRIBUTE_WIDTH, out_width));
         ASSERT_NO_FATAL_FAILURE(get_active_config_attribute(display,
                 HWC2_ATTRIBUTE_HEIGHT, out_height));
+    }
+
+    void close_fences(hwc2_display_t display, int32_t present_fence)
+    {
+        std::vector<hwc2_layer_t> layers;
+        std::vector<int32_t> fences;
+
+        if (present_fence >= 0)
+            close(present_fence);
+
+        ASSERT_NO_FATAL_FAILURE(get_release_fences(display, &layers, &fences));
+        ASSERT_EQ(layers.size(), fences.size());
+
+        for (int32_t fence: fences)
+            if (fence >= 0)
+                close(fence);
     }
 
     void set_layer_properties(hwc2_display_t display, hwc2_layer_t layer,
@@ -1065,6 +1131,94 @@ protected:
                 if (test_layers.get_composition(layer)
                         == HWC2_COMPOSITION_CLIENT)
                     out_client_layers->insert(layer);
+    }
+
+    void set_client_target(hwc2_display_t display,
+            hwc2_test_client_target &test_client_target,
+            const hwc2_test_layers &test_layers,
+            const std::set<hwc2_layer_t> client_layers,
+            bool clear_client_target, int32_t display_width,
+            int32_t display_height)
+    {
+        android_pixel_format_t format = HAL_PIXEL_FORMAT_RGBA_8888;
+        android_dataspace_t dataspace = HAL_DATASPACE_UNKNOWN;
+        hwc_region_t damage = { };
+        buffer_handle_t handle;
+        int32_t acquire_fence;
+
+        ASSERT_EQ(test_client_target.get_buffer(test_layers, client_layers,
+                clear_client_target, display_width, display_height, format,
+                &handle, &acquire_fence), 0);
+        EXPECT_NO_FATAL_FAILURE(set_client_target(display, handle,
+                acquire_fence, dataspace, damage));
+    }
+
+    void present_display(hwc2_display_t display, size_t layer_cnt,
+            hwc2_test_coverage_t coverage, const std::map<hwc2_test_property_t,
+            hwc2_test_coverage_t> &coverage_exceptions,
+            bool full_display_required)
+    {
+        std::vector<hwc2_config_t> configs;
+        int32_t width, height;
+        std::vector<hwc2_layer_t> layers;
+        uint32_t num_types, num_requests;
+        bool has_changes, skip;
+        bool clear_client_target;
+        int32_t present_fence;
+
+        ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+        ASSERT_NO_FATAL_FAILURE(enable_vsync(display));
+
+        ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+        for (hwc2_config_t config: configs) {
+            ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+            ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+
+            ASSERT_NO_FATAL_FAILURE(create_layers(display, layers, layer_cnt));
+            hwc2_test_layers test_layers(layers, coverage, width, height,
+                    coverage_exceptions);
+
+            if (full_display_required)
+                test_layers.require_full_display();
+
+            std::set<hwc2_layer_t> client_layers;
+            hwc2_test_client_target test_client_target;
+
+            do {
+                ASSERT_NO_FATAL_FAILURE(set_layer_properties(display, layers,
+                        test_layers, &skip));
+                if (skip)
+                    continue;
+
+                ASSERT_NO_FATAL_FAILURE(validate_display(display, &num_types,
+                        &num_requests, &has_changes));
+                if (has_changes)
+                    EXPECT_LE(num_types, (uint32_t) layers.size())
+                            << "wrong number of requests";
+
+                ASSERT_NO_FATAL_FAILURE(manage_composition_changes(display,
+                        test_layers, layers, num_types, &client_layers));
+                ASSERT_NO_FATAL_FAILURE(manage_requests(display, layers,
+                        num_requests, &client_layers, &clear_client_target));
+                ASSERT_NO_FATAL_FAILURE(set_client_target(display,
+                        test_client_target, test_layers, client_layers,
+                        clear_client_target, width, height));
+                ASSERT_NO_FATAL_FAILURE(accept_display_changes(display));
+
+                ASSERT_NO_FATAL_FAILURE(wait_for_vsync());
+
+                EXPECT_NO_FATAL_FAILURE(present_display(display, &present_fence));
+
+                ASSERT_NO_FATAL_FAILURE(close_fences(display, present_fence));
+                client_layers.clear();
+            } while (test_layers.advance());
+
+            ASSERT_NO_FATAL_FAILURE(destroy_layers(display, layers));
+        }
+
+        ASSERT_NO_FATAL_FAILURE(disable_vsync(display));
+        ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
     }
 
     hwc2_device_t *hwc2_device;
@@ -3740,5 +3894,456 @@ TEST_F(hwc2_test, SET_CLIENT_TARGET_bad_display)
     if (acquire_fence >= 0)
         close(acquire_fence);
 
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_default_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages;
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_default_2)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 2;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages;
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_default_3)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 3;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages;
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_default_4)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 4;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages;
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_default_5)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 5;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages;
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_default_6)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 6;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages;
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_blend_mode_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_BLEND_MODE, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_PLANE_ALPHA, HWC2_TEST_COVERAGE_BASIC}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_blend_mode_2)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 2;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_BLEND_MODE, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_PLANE_ALPHA, HWC2_TEST_COVERAGE_BASIC}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_blend_mode_3)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 3;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_BLEND_MODE, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_PLANE_ALPHA, HWC2_TEST_COVERAGE_BASIC}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_buffer_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_BUFFER_AREA, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_FORMAT, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_color_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_COMPOSITION, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_COLOR, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_composition_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_COMPOSITION, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_cursor_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_COMPOSITION, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_CURSOR, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_cursor_2)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 2;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_COMPOSITION, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_CURSOR, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_BASIC}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_dataspace_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_DATASPACE, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_display_frame_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_display_frame_2)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 2;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_display_frame_3)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 3;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_display_frame_4)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 4;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_format_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_FORMAT, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_plane_alpha_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_BLEND_MODE, HWC2_TEST_COVERAGE_BASIC},
+            {HWC2_TEST_PLANE_ALPHA, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_plane_alpha_2)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 2;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_BLEND_MODE, HWC2_TEST_COVERAGE_BASIC},
+            {HWC2_TEST_PLANE_ALPHA, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_plane_alpha_3)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 3;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_BLEND_MODE, HWC2_TEST_COVERAGE_BASIC},
+            {HWC2_TEST_PLANE_ALPHA, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_source_crop_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_BASIC},
+            {HWC2_TEST_SOURCE_CROP, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_source_crop_2)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 2;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_BASIC},
+            {HWC2_TEST_SOURCE_CROP, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_source_crop_3)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 3;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_BASIC},
+            {HWC2_TEST_SOURCE_CROP, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_surface_damage_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_SURFACE_DAMAGE, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_transform_1)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_TRANSFORM, HWC2_TEST_COVERAGE_COMPLETE}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_transform_2)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 2;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::map<hwc2_test_property_t, hwc2_test_coverage_t> coverages =
+            {{HWC2_TEST_TRANSFORM, HWC2_TEST_COVERAGE_COMPLETE},
+            {HWC2_TEST_DISPLAY_FRAME, HWC2_TEST_COVERAGE_BASIC}};
+    bool full_display_required = true;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, layer_cnt, coverage,
+            coverages, full_display_required));
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    int32_t present_fence;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(present_display(display, &present_fence, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, PRESENT_DISPLAY_not_validated)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    size_t layer_cnt = 1;
+    hwc2_test_coverage_t coverage = HWC2_TEST_COVERAGE_DEFAULT;
+    std::vector<hwc2_config_t> configs;
+    int32_t width, height;
+    std::vector<hwc2_layer_t> layers;
+    bool skip;
+    int32_t present_fence;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+    ASSERT_NO_FATAL_FAILURE(enable_vsync(display));
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+
+        ASSERT_NO_FATAL_FAILURE(create_layers(display, layers, layer_cnt));
+        hwc2_test_layers test_layers(layers, coverage, width, height);
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(set_layer_properties(display, layers,
+                    test_layers, &skip));
+            if (skip)
+                continue;
+
+            ASSERT_NO_FATAL_FAILURE(wait_for_vsync());
+
+            ASSERT_NO_FATAL_FAILURE(present_display(display, &present_fence, &err));
+            EXPECT_EQ(err, HWC2_ERROR_NOT_VALIDATED) << "returned wrong error code";
+
+        } while (test_layers.advance());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layers(display, layers));
+    }
+
+    ASSERT_NO_FATAL_FAILURE(disable_vsync(display));
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, GET_RELEASE_FENCES_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    std::vector<hwc2_layer_t> layers;
+    std::vector<int32_t> fences;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_release_fences(display, &layers, &fences, &err));
     EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
 }

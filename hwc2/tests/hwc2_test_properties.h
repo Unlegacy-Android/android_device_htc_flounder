@@ -37,6 +37,21 @@ typedef enum {
     HWC2_TEST_NUM_COVERAGE_TYPES,
 } hwc2_test_coverage_t;
 
+typedef enum {
+    HWC2_TEST_BLEND_MODE = 1,
+    HWC2_TEST_BUFFER_AREA,
+    HWC2_TEST_COLOR,
+    HWC2_TEST_COMPOSITION,
+    HWC2_TEST_CURSOR,
+    HWC2_TEST_DATASPACE,
+    HWC2_TEST_DISPLAY_FRAME,
+    HWC2_TEST_FORMAT,
+    HWC2_TEST_PLANE_ALPHA,
+    HWC2_TEST_SOURCE_CROP,
+    HWC2_TEST_SURFACE_DAMAGE,
+    HWC2_TEST_TRANSFORM,
+} hwc2_test_property_t;
+
 
 class hwc2_test_container {
 public:
