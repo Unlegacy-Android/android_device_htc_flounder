@@ -66,6 +66,12 @@ int hwc2_test_layer::get_buffer(buffer_handle_t *out_handle,
     return ret;
 }
 
+int hwc2_test_layer::get_buffer(buffer_handle_t *out_handle,
+        int32_t *out_acquire_fence)
+{
+    return buffer.get(out_handle, out_acquire_fence);
+}
+
 void hwc2_test_layer::set_z_order(uint32_t z_order)
 {
     this->z_order = z_order;
@@ -82,6 +88,15 @@ void hwc2_test_layer::reset()
 
     for (auto property: properties)
         property->reset();
+}
+
+bool hwc2_test_layer::advance()
+{
+    for (auto property: properties)
+        if (property->is_supported(composition.get()))
+            if (property->advance())
+                return true;
+    return false;
 }
 
 hwc2_blend_mode_t hwc2_test_layer::get_blend_mode() const

@@ -22,7 +22,7 @@
 
 hwc2_test_buffer_area::hwc2_test_buffer_area(hwc2_test_coverage_t coverage,
         int32_t display_width, int32_t display_height)
-    : hwc2_test_property(buffer_areas),
+    : hwc2_test_property(buffer_areas, composition_support),
       scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_scalars:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_scalars:
             default_scalars),
@@ -111,12 +111,16 @@ const std::vector<float> hwc2_test_buffer_area::complete_scalars = {
     1.0f, 0.75f, 0.5f
 };
 
+const std::array<bool, 6> hwc2_test_buffer_area::composition_support = {{
+    false, true, true, false, true, true,
+}};
+
 
 hwc2_test_blend_mode::hwc2_test_blend_mode(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_blend_modes:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_blend_modes:
-            default_blend_modes) { }
+            default_blend_modes, composition_support) { }
 
 std::string hwc2_test_blend_mode::dump() const
 {
@@ -140,12 +144,16 @@ const std::vector<hwc2_blend_mode_t> hwc2_test_blend_mode::complete_blend_modes 
     HWC2_BLEND_MODE_COVERAGE,
 };
 
+const std::array<bool, 6> hwc2_test_blend_mode::composition_support = {{
+    false, true, true, false, true, true,
+}};
+
 
 hwc2_test_color::hwc2_test_color(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_colors:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_colors:
-            default_colors) { }
+            default_colors, composition_support) { }
 
 std::string hwc2_test_color::dump() const
 {
@@ -185,12 +193,16 @@ const std::vector<hwc_color_t> hwc2_test_color::complete_colors = {
     {        0,         0,         0,         0},
 };
 
+const std::array<bool, 6> hwc2_test_color::composition_support = {{
+    false, false, false, true, false, false,
+}};
+
 
 hwc2_test_composition::hwc2_test_composition(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_compositions:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_compositions:
-            default_compositions) { }
+            default_compositions, composition_support) { }
 
 std::string hwc2_test_composition::dump() const
 {
@@ -216,10 +228,14 @@ const std::vector<hwc2_composition_t> hwc2_test_composition::complete_compositio
     HWC2_COMPOSITION_SIDEBAND,
 };
 
+const std::array<bool, 6> hwc2_test_composition::composition_support = {{
+    false, true, true, true, true, true,
+}};
+
 
 hwc2_test_cursor::hwc2_test_cursor(hwc2_test_coverage_t coverage,
         int32_t display_width, int32_t display_height)
-    : hwc2_test_property(cursors),
+    : hwc2_test_property(cursors, composition_support),
       scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_scalars:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_scalars:
             default_scalars),
@@ -266,12 +282,16 @@ const std::vector<float> hwc2_test_cursor::complete_scalars = {
     0.0f, 0.25f, 0.5f, 0.75f,
 };
 
+const std::array<bool, 6> hwc2_test_cursor::composition_support = {{
+    false, false, false, false, true, false,
+}};
+
 
 hwc2_test_dataspace::hwc2_test_dataspace(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_dataspaces:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_dataspaces:
-            default_dataspaces) { }
+            default_dataspaces, composition_support) { }
 
 std::string hwc2_test_dataspace::dump() const
 {
@@ -334,10 +354,14 @@ const std::vector<android_dataspace_t> hwc2_test_dataspace::complete_dataspaces 
     HAL_DATASPACE_DEPTH,
 };
 
+const std::array<bool, 6> hwc2_test_dataspace::composition_support = {{
+    false, true, true, true, true, false,
+}};
+
 
 hwc2_test_display_frame::hwc2_test_display_frame(hwc2_test_coverage_t coverage,
         int32_t display_width, int32_t display_height)
-    : hwc2_test_property(display_frames),
+    : hwc2_test_property(display_frames, composition_support),
       frect_scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_frect_scalars:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_frect_scalars:
             default_frect_scalars),
@@ -395,12 +419,16 @@ const std::vector<hwc_frect_t> hwc2_test_display_frame::complete_frect_scalars =
     {0.25, 0.25, 0.75, 0.75},
 };
 
+const std::array<bool, 6> hwc2_test_display_frame::composition_support = {{
+    false, true, true, true, true, true,
+}};
+
 
 hwc2_test_format::hwc2_test_format(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_formats:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_formats:
-            default_formats),
+            default_formats, composition_support),
       buffer(nullptr) { }
 
 std::string hwc2_test_format::dump() const
@@ -456,12 +484,16 @@ const std::vector<android_pixel_format_t> hwc2_test_format::complete_formats = {
     HAL_PIXEL_FORMAT_YCbCr_422_I,
 };
 
+const std::array<bool, 6> hwc2_test_format::composition_support = {{
+    false, true, true, true, true, true,
+}};
+
 
 hwc2_test_plane_alpha::hwc2_test_plane_alpha(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_plane_alphas:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_plane_alphas:
-            default_plane_alphas) { }
+            default_plane_alphas, composition_support) { }
 
 std::string hwc2_test_plane_alpha::dump() const
 {
@@ -482,10 +514,14 @@ const std::vector<float> hwc2_test_plane_alpha::complete_plane_alphas = {
     1.0f, 0.75f, 0.5f, 0.25f, 0.0f,
 };
 
+const std::array<bool, 6> hwc2_test_plane_alpha::composition_support = {{
+    false, true, true, true, true, true,
+}};
+
 
 hwc2_test_source_crop::hwc2_test_source_crop(hwc2_test_coverage_t coverage,
         float buffer_width, float buffer_height)
-    : hwc2_test_property(source_crops),
+    : hwc2_test_property(source_crops, composition_support),
       frect_scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_frect_scalars:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_frect_scalars:
             default_frect_scalars),
@@ -549,9 +585,13 @@ const std::vector<hwc_frect_t> hwc2_test_source_crop::complete_frect_scalars = {
     {0.25, 0.25, 0.75, 0.75},
 };
 
+const std::array<bool, 6> hwc2_test_source_crop::composition_support = {{
+    false, true, true, false, true, false,
+}};
+
 
 hwc2_test_surface_damage::hwc2_test_surface_damage(hwc2_test_coverage_t coverage)
-    : hwc2_test_property(surface_damages),
+    : hwc2_test_property(surface_damages, composition_support),
       region_scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_region_scalars:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_region_scalars:
             default_region_scalars),
@@ -649,12 +689,16 @@ const std::vector<std::vector<hwc_frect_t>> hwc2_test_surface_damage::complete_r
     {{0.0, 0.0, 0.5, 0.5}, {0.5, 0.5, 1.0, 1.0}},
 };
 
+const std::array<bool, 6> hwc2_test_surface_damage::composition_support = {{
+    false, false, true, false, true, false,
+}};
+
 
 hwc2_test_transform::hwc2_test_transform(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_transforms:
             (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_transforms:
-            default_transforms) { }
+            default_transforms, composition_support) { }
 
 std::string hwc2_test_transform::dump() const
 {
@@ -683,6 +727,10 @@ const std::vector<hwc_transform_t> hwc2_test_transform::complete_transforms = {
     HWC_TRANSFORM_FLIP_H_ROT_90,
     HWC_TRANSFORM_FLIP_V_ROT_90,
 };
+
+const std::array<bool, 6> hwc2_test_transform::composition_support = {{
+    false, false, true, false, true, true,
+}};
 
 
 hwc2_test_visible_region::hwc2_test_visible_region()

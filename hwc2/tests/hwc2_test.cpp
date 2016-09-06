@@ -608,6 +608,32 @@ public:
                 << z_order;
     }
 
+    void validate_display(hwc2_display_t display, uint32_t *out_num_types,
+            uint32_t *out_num_requests, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_VALIDATE_DISPLAY pfn = (HWC2_PFN_VALIDATE_DISPLAY)
+                get_function(HWC2_FUNCTION_VALIDATE_DISPLAY);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, out_num_types,
+                out_num_requests);
+    }
+
+    void validate_display(hwc2_display_t display, uint32_t *out_num_types,
+            uint32_t *out_num_requests, bool *out_has_changes)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+
+        ASSERT_NO_FATAL_FAILURE(validate_display(display, out_num_types,
+                out_num_requests, &err));
+
+        if (err != HWC2_ERROR_HAS_CHANGES) {
+            EXPECT_EQ(err, HWC2_ERROR_NONE) << "failed to validate display";
+            *out_has_changes = false;
+        } else
+            *out_has_changes = true;
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -720,6 +746,74 @@ protected:
                 HWC2_ATTRIBUTE_WIDTH, out_width));
         ASSERT_NO_FATAL_FAILURE(get_active_config_attribute(display,
                 HWC2_ATTRIBUTE_HEIGHT, out_height));
+    }
+
+    void set_layer_properties(hwc2_display_t display, hwc2_layer_t layer,
+            hwc2_test_layers &test_layers, bool *out_skip)
+    {
+        hwc2_composition_t composition;
+        buffer_handle_t handle = nullptr;
+        int32_t acquire_fence;
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        *out_skip = true;
+
+        if (!test_layers.contains(layer))
+            return;
+
+        composition = test_layers.get_composition(layer);
+
+        /* If the device cannot support a buffer format, then do not continue */
+        if ((composition == HWC2_COMPOSITION_DEVICE
+                || composition == HWC2_COMPOSITION_CURSOR)
+                && test_layers.get_buffer(layer, &handle, &acquire_fence) < 0)
+            return;
+
+        EXPECT_NO_FATAL_FAILURE(set_layer_composition_type(display, layer,
+                composition, &err));
+        if (err == HWC2_ERROR_UNSUPPORTED)
+            EXPECT_TRUE(composition != HWC2_COMPOSITION_CLIENT
+                    && composition != HWC2_COMPOSITION_DEVICE);
+
+        std::pair<int32_t, int32_t> cursor = test_layers.get_cursor(layer);
+
+        EXPECT_NO_FATAL_FAILURE(set_layer_buffer(display, layer, handle,
+                acquire_fence));
+        EXPECT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
+                test_layers.get_blend_mode(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_layer_color(display, layer,
+                test_layers.get_color(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_cursor_position(display, layer,
+                cursor.first, cursor.second));
+        EXPECT_NO_FATAL_FAILURE(set_layer_dataspace(display, layer,
+                test_layers.get_dataspace(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_layer_display_frame(display, layer,
+                test_layers.get_display_frame(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_layer_plane_alpha(display, layer,
+                test_layers.get_plane_alpha(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_layer_source_crop(display, layer,
+                test_layers.get_source_crop(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_layer_surface_damage(display, layer,
+                test_layers.get_surface_damage(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_layer_transform(display, layer,
+                test_layers.get_transform(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_layer_visible_region(display, layer,
+                test_layers.get_visible_region(layer)));
+        EXPECT_NO_FATAL_FAILURE(set_layer_z_order(display, layer,
+                test_layers.get_z_order(layer)));
+
+        *out_skip = false;
+    }
+
+    void set_layer_properties(hwc2_display_t display,
+            std::vector<hwc2_layer_t> &layers,
+            hwc2_test_layers &test_layers, bool *out_skip)
+    {
+        for (auto itr = layers.begin(); itr != layers.end(); itr++) {
+            EXPECT_NO_FATAL_FAILURE(set_layer_properties(display, *itr,
+                    test_layers, out_skip));
+            if (*out_skip)
+                return;
+        }
     }
 
     hwc2_device_t *hwc2_device;
@@ -2785,4 +2879,141 @@ TEST_F(hwc2_test, SET_LAYER_SIDEBAND_STREAM)
             HWC2_FUNCTION_SET_LAYER_SIDEBAND_STREAM);
     EXPECT_FALSE(pfn) << "flounder doesn't support sideband stream so"
             " get_function should return nullptr";
+}
+
+TEST_F(hwc2_test, VALIDATE_DISPLAY_basic)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    int32_t width, height;
+    size_t layer_cnt = 1;
+    std::vector<hwc2_layer_t> layers;
+    uint32_t num_types, num_requests;
+    bool has_changes, skip;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+
+        ASSERT_NO_FATAL_FAILURE(create_layers(display, layers, layer_cnt));
+        hwc2_test_layers test_layers(layers, HWC2_TEST_COVERAGE_BASIC, width,
+                height);
+        test_layers.require_full_display();
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(set_layer_properties(display, layers,
+                    test_layers, &skip));
+            if (skip)
+                continue;
+
+            EXPECT_NO_FATAL_FAILURE(validate_display(display, &num_types,
+                    &num_requests, &has_changes));
+            if (has_changes)
+                EXPECT_LE(num_types, (uint32_t) layers.size())
+                        << "wrong number of requests";
+        } while (test_layers.advance());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layers(display, layers));
+    }
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, VALIDATE_DISPLAY_basic_2)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    int32_t width, height;
+    size_t layer_cnt = 2;
+    std::vector<hwc2_layer_t> layers;
+    uint32_t num_types, num_requests;
+    bool has_changes, skip;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+
+        ASSERT_NO_FATAL_FAILURE(create_layers(display, layers, layer_cnt));
+        hwc2_test_layers test_layers(layers, HWC2_TEST_COVERAGE_BASIC, width,
+                height);
+        test_layers.require_full_display();
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(set_layer_properties(display, layers,
+                    test_layers, &skip));
+            if (skip)
+                continue;
+
+            EXPECT_NO_FATAL_FAILURE(validate_display(display, &num_types,
+                    &num_requests, &has_changes));
+            if (has_changes)
+                EXPECT_LE(num_types, (uint32_t) layers.size())
+                        << "wrong number of requests";
+        } while (test_layers.advance());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layers(display, layers));
+    }
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, VALIDATE_DISPLAY_default_5)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    int32_t width, height;
+    size_t layer_cnt = 5;
+    std::vector<hwc2_layer_t> layers;
+    uint32_t num_types, num_requests;
+    bool has_changes, skip;
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_ON));
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+
+        ASSERT_NO_FATAL_FAILURE(create_layers(display, layers, layer_cnt));
+        hwc2_test_layers test_layers(layers, HWC2_TEST_COVERAGE_DEFAULT, width,
+                height);
+        test_layers.require_full_display();
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(set_layer_properties(display, layers,
+                    test_layers, &skip));
+            if (skip)
+                continue;
+
+            EXPECT_NO_FATAL_FAILURE(validate_display(display, &num_types,
+                    &num_requests, &has_changes));
+            if (has_changes)
+                EXPECT_LE(num_types, (uint32_t) layers.size())
+                        << "wrong number of requests";
+        } while (test_layers.advance());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layers(display, layers));
+    }
+
+    ASSERT_NO_FATAL_FAILURE(set_power_mode(display, HWC2_POWER_MODE_OFF));
+}
+
+TEST_F(hwc2_test, VALIDATE_DISPLAY_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    uint32_t num_types, num_requests;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(validate_display(display, &num_types, &num_requests,
+            &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
 }

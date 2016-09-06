@@ -50,15 +50,20 @@ public:
     virtual bool advance() = 0;
 
     virtual std::string dump() const = 0;
+
+    /* Returns true if the container supports the given composition type */
+    virtual bool is_supported(hwc2_composition_t composition) = 0;
 };
 
 
 template <class T>
 class hwc2_test_property : public hwc2_test_container {
 public:
-    hwc2_test_property(const std::vector<T> &list)
+    hwc2_test_property(const std::vector<T> &list,
+            const std::array<bool, 6> &composition_support)
         : list(list),
-          list_idx(0) { }
+          list_idx(0),
+          composition_support(composition_support) { }
 
     virtual void reset()
     {
@@ -82,14 +87,20 @@ public:
         return list.at(list_idx);
     }
 
+    virtual bool is_supported(hwc2_composition_t composition)
+    {
+        return composition_support.at(composition);
+    }
+
 protected:
     /* If a derived class has dependents, override this function */
     virtual void update_dependents() { }
 
     const std::vector<T> &list;
     uint32_t list_idx;
-};
 
+    const std::array<bool, 6> &composition_support;
+};
 
 class hwc2_test_source_crop;
 class hwc2_test_surface_damage;
@@ -122,6 +133,8 @@ protected:
     hwc2_test_surface_damage *surface_damage;
 
     std::vector<std::pair<int32_t, int32_t>> buffer_areas;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -135,6 +148,8 @@ protected:
     static const std::vector<hwc2_blend_mode_t> default_blend_modes;
     static const std::vector<hwc2_blend_mode_t> basic_blend_modes;
     static const std::vector<hwc2_blend_mode_t> complete_blend_modes;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -148,6 +163,8 @@ protected:
     static const std::vector<hwc_color_t> default_colors;
     static const std::vector<hwc_color_t> basic_colors;
     static const std::vector<hwc_color_t> complete_colors;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -161,6 +178,8 @@ protected:
     static const std::vector<hwc2_composition_t> default_compositions;
     static const std::vector<hwc2_composition_t> basic_compositions;
     static const std::vector<hwc2_composition_t> complete_compositions;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -183,6 +202,8 @@ protected:
     int32_t display_height;
 
     std::vector<std::pair<int32_t, int32_t>> cursors;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -196,6 +217,8 @@ protected:
     static const std::vector<android_dataspace_t> default_dataspaces;
     static const std::vector<android_dataspace_t> basic_dataspaces;
     static const std::vector<android_dataspace_t> complete_dataspaces;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -218,6 +241,8 @@ protected:
     int32_t display_height;
 
     std::vector<hwc_rect_t> display_frames;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -237,6 +262,8 @@ protected:
     static const std::vector<android_pixel_format_t> default_formats;
     static const std::vector<android_pixel_format_t> basic_formats;
     static const std::vector<android_pixel_format_t> complete_formats;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -250,6 +277,8 @@ protected:
     static const std::vector<float> default_plane_alphas;
     static const std::vector<float> basic_plane_alphas;
     static const std::vector<float> complete_plane_alphas;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -274,6 +303,8 @@ protected:
     float buffer_height;
 
     std::vector<hwc_frect_t> source_crops;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -299,6 +330,8 @@ protected:
     int32_t buffer_height;
 
     std::vector<hwc_region_t> surface_damages;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 
@@ -312,6 +345,8 @@ protected:
     static const std::vector<hwc_transform_t> default_transforms;
     static const std::vector<hwc_transform_t> basic_transforms;
     static const std::vector<hwc_transform_t> complete_transforms;
+
+    static const std::array<bool, 6> composition_support;
 };
 
 

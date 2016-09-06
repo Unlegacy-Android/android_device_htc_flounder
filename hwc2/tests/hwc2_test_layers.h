@@ -38,15 +38,39 @@ public:
 
     void reset();
 
+    bool advance();
     bool advance_visible_regions();
 
-    const hwc_region_t get_visible_region(hwc2_layer_t layer) const;
-    uint32_t           get_z_order(hwc2_layer_t layer) const;
+    bool require_full_display();
+
+    bool contains(hwc2_layer_t layer) const;
+
+    int  get_buffer(hwc2_layer_t layer, buffer_handle_t *out_handle,
+            int32_t *out_acquire_fence);
+
+    hwc2_blend_mode_t      get_blend_mode(hwc2_layer_t layer) const;
+    const hwc_color_t      get_color(hwc2_layer_t layer) const;
+    hwc2_composition_t     get_composition(hwc2_layer_t layer) const;
+    const std::pair<int32_t, int32_t> get_cursor(hwc2_layer_t layer) const;
+    android_dataspace_t    get_dataspace(hwc2_layer_t layer) const;
+    const hwc_rect_t       get_display_frame(hwc2_layer_t layer) const;
+    android_pixel_format_t get_format(hwc2_layer_t layer) const;
+    float                  get_plane_alpha(hwc2_layer_t layer) const;
+    const hwc_frect_t      get_source_crop(hwc2_layer_t layer) const;
+    const hwc_region_t     get_surface_damage(hwc2_layer_t layer) const;
+    hwc_transform_t        get_transform(hwc2_layer_t layer) const;
+    const hwc_region_t     get_visible_region(hwc2_layer_t layer) const;
+    uint32_t               get_z_order(hwc2_layer_t layer) const;
 
 private:
-    void set_visible_regions();
+    bool set_visible_regions();
 
     std::map<hwc2_layer_t, hwc2_test_layer> test_layers;
+
+    int32_t display_width;
+    int32_t display_height;
+
+    bool full_display_required;
 };
 
 #endif /* ifndef _HWC2_TEST_LAYERS_H */
