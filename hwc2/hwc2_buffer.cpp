@@ -20,6 +20,7 @@
 #include <tegra_adf.h>
 #include <android-base/macros.h>
 #include <cassert>
+#include <sstream>
 
 #include "hwc2.h"
 
@@ -71,6 +72,29 @@ hwc2_buffer::hwc2_buffer()
 hwc2_buffer::~hwc2_buffer()
 {
     close_acquire_fence();
+}
+
+std::string hwc2_buffer::dump() const
+{
+    std::stringstream dmp;
+
+    dmp << "    Buffer: " << std::hex << handle << "/" << std::dec
+            << acquire_fence << "    Z: " << z_order << "\n";
+    dmp << "    Display Frame: [" << display_frame.left << ", "
+            << display_frame.top << ", " << display_frame.right << ", "
+            << display_frame.bottom << "]\n";
+    dmp << "    Source Crop: [" << source_crop.left << ", "
+            << source_crop.top << ", " << source_crop.right << ", "
+            << source_crop.bottom << "]\n";
+    dmp << "    Transform: " << getTransformName(transform)
+            << "    Blend Mode: " << getBlendModeName(blend_mode);
+
+    if (plane_alpha != 1.0f)
+        dmp << "    Alpha: " << plane_alpha;
+
+    dmp << "\n";
+
+    return dmp.str();
 }
 
 hwc2_error_t hwc2_buffer::decompress()

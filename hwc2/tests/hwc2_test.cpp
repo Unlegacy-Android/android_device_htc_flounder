@@ -1001,6 +1001,23 @@ public:
         ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set output buffer";
     }
 
+    void dump(std::string *out_buffer)
+    {
+        HWC2_PFN_DUMP pfn = (HWC2_PFN_DUMP) get_function(HWC2_FUNCTION_DUMP);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        uint32_t size = 0;
+
+        pfn(hwc2_device, &size, nullptr);
+
+        char *buffer = new char[size];
+
+        pfn(hwc2_device, &size, buffer);
+
+        out_buffer->assign(buffer);
+        delete[] buffer;
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -5031,4 +5048,11 @@ TEST_F(hwc2_test, SET_OUTPUT_BUFFER_unsupported)
         EXPECT_EQ(err, HWC2_ERROR_UNSUPPORTED) << "returned wrong error code";
 
     } while (test_virtual_display.advance());
+}
+
+TEST_F(hwc2_test, DUMP)
+{
+    std::string buffer;
+
+    ASSERT_NO_FATAL_FAILURE(dump(&buffer));
 }
