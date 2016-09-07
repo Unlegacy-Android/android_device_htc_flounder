@@ -237,6 +237,27 @@ protected:
 };
 
 
+class hwc2_test_display_dimension : public hwc2_test_property<std::pair<int32_t, int32_t>> {
+public:
+    hwc2_test_display_dimension(hwc2_test_coverage_t coverage);
+
+    std::string dump() const;
+
+    void set_dependent(hwc2_test_buffer *buffer);
+
+private:
+    void update_dependents();
+
+    hwc2_test_buffer *buffer;
+
+    static const std::vector<std::pair<int32_t, int32_t>> default_display_dimensions;
+    static const std::vector<std::pair<int32_t, int32_t>> basic_display_dimensions;
+    static const std::vector<std::pair<int32_t, int32_t>> complete_display_dimensions;
+
+    static const std::array<bool, 6> composition_support;
+};
+
+
 class hwc2_test_display_frame : public hwc2_test_property<hwc_rect_t> {
 public:
     hwc2_test_display_frame(hwc2_test_coverage_t coverage,

@@ -29,6 +29,7 @@
 #include "hwc2_test_layer.h"
 #include "hwc2_test_layers.h"
 #include "hwc2_test_client_target.h"
+#include "hwc2_test_virtual_display.h"
 
 void hwc2_test_vsync_callback(hwc2_callback_data_t callback_data,
         hwc2_display_t display, int64_t timestamp);
@@ -39,6 +40,7 @@ public:
         : hwc2_device(nullptr),
           layers(),
           active_displays(),
+          virtual_displays(),
           vsync_mutex(),
           vsync_cv(),
           vsync_display(),
@@ -926,6 +928,79 @@ public:
                 << hint;
     }
 
+    void create_virtual_display(uint32_t width, uint32_t height,
+            android_pixel_format_t *out_format, hwc2_display_t *out_display,
+            hwc2_error_t *out_err)
+    {
+        HWC2_PFN_CREATE_VIRTUAL_DISPLAY pfn = (HWC2_PFN_CREATE_VIRTUAL_DISPLAY)
+                get_function(HWC2_FUNCTION_CREATE_VIRTUAL_DISPLAY);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, width, height,
+                (int32_t *) out_format, out_display);
+
+        if (*out_err == HWC2_ERROR_NONE)
+            virtual_displays.insert(*out_display);
+}
+
+    void create_virtual_display(uint32_t width, uint32_t height,
+            android_pixel_format_t *out_format, hwc2_display_t *out_display)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(create_virtual_display(width, height, out_format,
+                out_display, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to create virtual display";
+    }
+
+    void destroy_virtual_display(hwc2_display_t display, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_DESTROY_VIRTUAL_DISPLAY pfn = (HWC2_PFN_DESTROY_VIRTUAL_DISPLAY)
+                get_function(HWC2_FUNCTION_DESTROY_VIRTUAL_DISPLAY);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display);
+
+        if (*out_err == HWC2_ERROR_NONE)
+            virtual_displays.erase(display);
+    }
+
+    void destroy_virtual_display(hwc2_display_t display)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to destroy virtual display";
+    }
+
+    void get_max_virtual_display_count(uint32_t *out_max_cnt)
+    {
+        HWC2_PFN_GET_MAX_VIRTUAL_DISPLAY_COUNT pfn =
+                (HWC2_PFN_GET_MAX_VIRTUAL_DISPLAY_COUNT)
+                get_function(HWC2_FUNCTION_GET_MAX_VIRTUAL_DISPLAY_COUNT);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_max_cnt = (hwc2_error_t) pfn(hwc2_device);
+    }
+
+    void set_output_buffer(hwc2_display_t display, buffer_handle_t buffer,
+            int32_t release_fence, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_OUTPUT_BUFFER pfn = (HWC2_PFN_SET_OUTPUT_BUFFER)
+                get_function(HWC2_FUNCTION_SET_OUTPUT_BUFFER);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, buffer,
+                release_fence);
+    }
+
+    void set_output_buffer(hwc2_display_t display, buffer_handle_t buffer,
+            int32_t release_fence)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_output_buffer(display, buffer,
+                release_fence, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set output buffer";
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -1338,6 +1413,10 @@ protected:
     /* Store the power mode state. If it is not HWC2_POWER_MODE_OFF when
      * tearing down the test cases, change it to HWC2_POWER_MODE_OFF */
     std::set<hwc2_display_t> active_displays;
+
+    /* Store all created virtual displays that have not been destroyed. If an
+     * ASSERT_* fails, then destroy the virtual displays on exit */
+    std::set<hwc2_display_t> virtual_displays;
 
     std::mutex vsync_mutex;
     std::condition_variable vsync_cv;
@@ -4694,4 +4773,262 @@ TEST_F(hwc2_test, SET_COLOR_TRANSFORM_arbitrary_matrix)
                 example_matrices)
             EXPECT_NO_FATAL_FAILURE(set_color_transform(display, matrix, hint));
     }
+}
+
+TEST_F(hwc2_test, CREATE_DESTROY_VIRTUAL_DISPLAY)
+{
+    hwc2_display_t display;
+    hwc2_test_virtual_display test_virtual_display(HWC2_TEST_COVERAGE_COMPLETE);
+    android_pixel_format_t format, desired_format;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    do {
+        const std::pair<uint32_t, uint32_t> &dimension =
+                test_virtual_display.get_display_dimension();
+        format = test_virtual_display.get_format();
+        desired_format = format;
+
+        ASSERT_NO_FATAL_FAILURE(create_virtual_display(dimension.first,
+                dimension.second, &desired_format, &display, &err));
+
+        EXPECT_TRUE(err == HWC2_ERROR_NONE || err == HWC2_ERROR_NO_RESOURCES
+                || err == HWC2_ERROR_UNSUPPORTED) << "returned wrong error code";
+        EXPECT_GE(desired_format, 0) << "invalid format";
+
+        if (err == HWC2_ERROR_NONE)
+            ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display));
+
+    } while (test_virtual_display.advance());
+}
+
+TEST_F(hwc2_test, CREATE_DESTROY_VIRTUAL_DISPLAY_multiple)
+{
+    std::vector<hwc2_display_t> displays;
+    hwc2_display_t display;
+    hwc2_test_virtual_display test_virtual_display(HWC2_TEST_COVERAGE_COMPLETE);
+    android_pixel_format_t format, desired_format;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    do {
+        const std::pair<uint32_t, uint32_t> &dimension =
+                test_virtual_display.get_display_dimension();
+        format = test_virtual_display.get_format();
+        desired_format = format;
+
+        ASSERT_NO_FATAL_FAILURE(create_virtual_display(dimension.first,
+                dimension.second, &desired_format, &display, &err));
+
+        EXPECT_TRUE(err == HWC2_ERROR_NONE || err == HWC2_ERROR_NO_RESOURCES
+                || err == HWC2_ERROR_UNSUPPORTED) << "returned wrong error code";
+        EXPECT_GE(desired_format, 0) << "invalid format";
+
+        if (err == HWC2_ERROR_NONE)
+            displays.push_back(display);
+
+    } while (test_virtual_display.advance());
+
+    for (hwc2_display_t display: displays)
+        EXPECT_NO_FATAL_FAILURE(destroy_virtual_display(display));
+}
+
+TEST_F(hwc2_test, DESTROY_VIRTUAL_DISPLAY_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    hwc2_test_virtual_display test_virtual_display(HWC2_TEST_COVERAGE_DEFAULT);
+    android_pixel_format_t desired_format;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+
+    do {
+        const std::pair<uint32_t, uint32_t> &dimension =
+                test_virtual_display.get_display_dimension();
+        desired_format = test_virtual_display.get_format();
+
+        ASSERT_NO_FATAL_FAILURE(create_virtual_display(dimension.first,
+                dimension.second, &desired_format, &display, &err));
+        EXPECT_TRUE(err == HWC2_ERROR_NONE || err == HWC2_ERROR_NO_RESOURCES
+                || err == HWC2_ERROR_UNSUPPORTED);
+
+        if (err != HWC2_ERROR_NONE)
+            return;
+
+        ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display + 1, &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display));
+
+        ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display, &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+
+    } while (test_virtual_display.advance());
+}
+
+TEST_F(hwc2_test, DESTROY_VIRTUAL_DISPLAY_bad_parameter)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_PARAMETER) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, GET_MAX_VIRTUAL_DISPLAY_COUNT)
+{
+    uint32_t max_cnt;
+
+    ASSERT_NO_FATAL_FAILURE(get_max_virtual_display_count(&max_cnt));
+}
+
+TEST_F(hwc2_test, GET_MAX_VIRTUAL_DISPLAY_COUNT_duplicate)
+{
+    uint32_t max_cnt1, max_cnt2;
+
+    ASSERT_NO_FATAL_FAILURE(get_max_virtual_display_count(&max_cnt1));
+    ASSERT_NO_FATAL_FAILURE(get_max_virtual_display_count(&max_cnt2));
+
+    EXPECT_EQ(max_cnt1, max_cnt2) << "returned two different max virtual"
+            " display counts";
+}
+
+TEST_F(hwc2_test, GET_MAX_VIRTUAL_DISPLAY_COUNT_create_max)
+{
+    std::vector<hwc2_display_t> displays;
+    hwc2_display_t display;
+    hwc2_test_virtual_display test_virtual_display(HWC2_TEST_COVERAGE_COMPLETE);
+    android_pixel_format_t desired_format;
+    uint32_t max_cnt;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_max_virtual_display_count(&max_cnt));
+
+    while (displays.size() < max_cnt) {
+        const std::pair<uint32_t, uint32_t> &dimension =
+                test_virtual_display.get_display_dimension();
+        desired_format = test_virtual_display.get_format();
+
+        ASSERT_NO_FATAL_FAILURE(create_virtual_display(dimension.first,
+                dimension.second, &desired_format, &display, &err));
+
+        EXPECT_TRUE(err == HWC2_ERROR_NONE || err == HWC2_ERROR_UNSUPPORTED)
+                << "returned wrong error code";
+
+        if (err == HWC2_ERROR_NONE)
+            displays.push_back(display);
+
+        if (!test_virtual_display.advance()) {
+            if (displays.empty())
+                break;
+            test_virtual_display.reset();
+        }
+    }
+
+    for (hwc2_display_t display: displays)
+        EXPECT_NO_FATAL_FAILURE(destroy_virtual_display(display));
+}
+
+TEST_F(hwc2_test, SET_OUTPUT_BUFFER)
+{
+    hwc2_display_t display;
+    hwc2_test_virtual_display test_virtual_display(HWC2_TEST_COVERAGE_COMPLETE);
+    android_pixel_format_t desired_format;
+    buffer_handle_t handle;
+    android::base::unique_fd acquire_fence;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    do {
+        const std::pair<uint32_t, uint32_t> &dimension =
+                test_virtual_display.get_display_dimension();
+        desired_format = test_virtual_display.get_format();
+
+        ASSERT_NO_FATAL_FAILURE(create_virtual_display(dimension.first,
+                dimension.second, &desired_format, &display, &err));
+
+        EXPECT_TRUE(err == HWC2_ERROR_NONE || err == HWC2_ERROR_NO_RESOURCES
+                || err == HWC2_ERROR_UNSUPPORTED)
+                << "returned wrong error code";
+
+        if (err != HWC2_ERROR_NONE)
+            continue;
+
+        if (test_virtual_display.get_buffer(&handle, &acquire_fence) >= 0)
+            EXPECT_NO_FATAL_FAILURE(set_output_buffer(display, handle,
+                    acquire_fence));
+
+        ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display));
+
+    } while (test_virtual_display.advance());
+}
+
+TEST_F(hwc2_test, SET_OUTPUT_BUFFER_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    hwc2_test_virtual_display test_virtual_display(HWC2_TEST_COVERAGE_COMPLETE);
+    buffer_handle_t handle;
+    android::base::unique_fd acquire_fence;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    do {
+        if (test_virtual_display.get_buffer(&handle, &acquire_fence) < 0)
+            continue;
+
+        ASSERT_NO_FATAL_FAILURE(set_output_buffer(display, handle,
+                acquire_fence, &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+
+    } while (test_virtual_display.advance());
+}
+
+TEST_F(hwc2_test, SET_OUTPUT_BUFFER_bad_parameter)
+{
+    hwc2_display_t display;
+    hwc2_test_virtual_display test_virtual_display(HWC2_TEST_COVERAGE_COMPLETE);
+    android_pixel_format_t desired_format;
+    buffer_handle_t handle = nullptr;
+    uint32_t release_fence = -1;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    do {
+        const std::pair<uint32_t, uint32_t> &dimension =
+                test_virtual_display.get_display_dimension();
+        desired_format = test_virtual_display.get_format();
+
+        ASSERT_NO_FATAL_FAILURE(create_virtual_display(dimension.first,
+                dimension.second, &desired_format, &display, &err));
+
+        EXPECT_TRUE(err == HWC2_ERROR_NONE || err == HWC2_ERROR_NO_RESOURCES
+                || err == HWC2_ERROR_UNSUPPORTED);
+
+        if (err != HWC2_ERROR_NONE)
+            continue;
+
+        ASSERT_NO_FATAL_FAILURE(set_output_buffer(display, handle,
+                release_fence, &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_PARAMETER)
+                << "returned wrong error code";
+
+        if (err == HWC2_ERROR_NONE)
+            ASSERT_NO_FATAL_FAILURE(destroy_virtual_display(display));
+
+    } while (test_virtual_display.advance());
+}
+
+TEST_F(hwc2_test, SET_OUTPUT_BUFFER_unsupported)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    hwc2_test_virtual_display test_virtual_display(HWC2_TEST_COVERAGE_COMPLETE);
+    buffer_handle_t handle;
+    android::base::unique_fd acquire_fence;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    do {
+        if (test_virtual_display.get_buffer(&handle, &acquire_fence) < 0)
+            continue;
+
+        ASSERT_NO_FATAL_FAILURE(set_output_buffer(display, handle,
+                acquire_fence, &err));
+        EXPECT_EQ(err, HWC2_ERROR_UNSUPPORTED) << "returned wrong error code";
+
+    } while (test_virtual_display.advance());
 }

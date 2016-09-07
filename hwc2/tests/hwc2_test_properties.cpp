@@ -359,6 +359,68 @@ const std::array<bool, 6> hwc2_test_dataspace::composition_support = {{
 }};
 
 
+hwc2_test_display_dimension::hwc2_test_display_dimension(hwc2_test_coverage_t coverage)
+    : hwc2_test_property(
+            (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_display_dimensions:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_display_dimensions:
+            default_display_dimensions, composition_support),
+      buffer(nullptr) { }
+
+std::string hwc2_test_display_dimension::dump() const
+{
+    std::stringstream dmp;
+    const std::pair<int32_t, int32_t> &curr = get();
+    dmp << "\tdisplay dimension: " << curr.first << " x " << curr.second << "\n";
+    return dmp.str();
+}
+
+void hwc2_test_display_dimension::set_dependent(hwc2_test_buffer *buffer)
+{
+    this->buffer = buffer;
+    update_dependents();
+}
+
+void hwc2_test_display_dimension::update_dependents()
+{
+    const std::pair<int32_t, int32_t> &curr = get();
+
+    if (buffer)
+        buffer->update_buffer_area(curr.first, curr.second);
+}
+
+const std::vector<std::pair<int32_t, int32_t>>
+        hwc2_test_display_dimension::default_display_dimensions = {
+    {1920, 1080},
+};
+
+const std::vector<std::pair<int32_t, int32_t>>
+        hwc2_test_display_dimension::basic_display_dimensions = {
+    {640, 480},
+    {1280, 720},
+    {1920, 1080},
+    {1920, 1200},
+    {3840, 2160},
+};
+
+const std::vector<std::pair<int32_t, int32_t>>
+        hwc2_test_display_dimension::complete_display_dimensions = {
+    {320, 240},
+    {480, 320},
+    {640, 480},
+    {1280, 720},
+    {1920, 1080},
+    {1920, 1200},
+    {2560, 1440},
+    {2560, 1600},
+    {3840, 2160},
+    {4096, 2160},
+};
+
+const std::array<bool, 6> hwc2_test_display_dimension::composition_support = {{
+    false, true, true, true, true, true,
+}};
+
+
 hwc2_test_display_frame::hwc2_test_display_frame(hwc2_test_coverage_t coverage,
         int32_t display_width, int32_t display_height)
     : hwc2_test_property(display_frames, composition_support),
