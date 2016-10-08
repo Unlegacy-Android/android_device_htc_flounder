@@ -200,8 +200,9 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/media/enctune.conf:system/etc/enctune.conf \
     $(LOCAL_PATH)/rootdir/etc/nvcamera.conf:system/etc/nvcamera.conf
 
-# HALs Packages
+# Power HAL
 PRODUCT_PACKAGES += \
+    android.hardware.power@1.0-impl \
     power.flounder
 
 # Camera HAL
