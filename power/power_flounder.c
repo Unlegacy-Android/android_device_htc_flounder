@@ -38,12 +38,9 @@
 #define FACEDOWN_PATH "/sys/class/htc_sensorhub/sensor_hub/facedown_enabled"
 #define TOUCH_SYNA_INTERACTIVE_PATH "/sys/devices/platform/spi-tegra114.2/spi_master/spi2/spi2.0/input/input0/interactive"
 #define WAKE_GESTURE_PATH "/sys/devices/platform/spi-tegra114.2/spi_master/spi2/spi2.0/input/input0/wake_gesture"
-#define GPU_BOOST_PATH "/dev/constraint_gpu_freq"
 #define IO_IS_BUSY_PATH "/sys/devices/system/cpu/cpufreq/interactive/io_is_busy"
 #define LOW_POWER_MAX_FREQ "1020000"
 #define NORMAL_MAX_FREQ "2295000"
-#define GPU_FREQ_CONSTRAINT "852000 852000 -1 2000"
-#define GPU_BOOST_CONSTRAINT "852000 252000 -1 2000"
 
 struct flounder_power_module {
     struct power_module base;
@@ -57,8 +54,6 @@ static char governor[20];
 static bool low_power_mode = false;
 static char *max_cpu_freq = NORMAL_MAX_FREQ;
 static char *low_power_max_cpu_freq = LOW_POWER_MAX_FREQ;
-static char *gpu_freq_constraint_freq = GPU_FREQ_CONSTRAINT;
-static char *gpu_BOOST_constraint_freq = GPU_BOOST_CONSTRAINT;
 
 static int sysfs_read(char *path, char *s, int num_bytes)
 {
@@ -131,11 +126,12 @@ static void configure_governor()
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/timer_rate", "20000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/timer_slack", "20000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/min_sample_time", "80000");
-    sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/hispeed_freq", "1020000");
+    sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/hispeed_freq", "1530000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load", "99");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/target_loads", "65 228000:75 624000:85");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay", "20000");
-    sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/boostpulse_duration", "50000");
+    sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/boostpulse_duration", "1000000");
+    sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/io_is_busy", "0");
     }
 }
 
@@ -155,7 +151,6 @@ static int boostpulse_open(struct flounder_power_module *flounder)
 {
     char buf[80];
     int len;
-    static int gpu_boost_fd = -1;
 
     pthread_mutex_lock(&flounder->lock);
 
@@ -177,9 +172,7 @@ static int boostpulse_open(struct flounder_power_module *flounder)
             }
         }
     }
-    
-    sysfs_write(GPU_BOOST_PATH, GPU_BOOST_CONSTRAINT);
-    
+
     pthread_mutex_unlock(&flounder->lock);
     return flounder->boostpulse_fd;
 }
@@ -249,7 +242,6 @@ static void power_init(struct power_module __unused *module)
 {
     get_scaling_governor();
     configure_governor();
-    sysfs_write(GPU_BOOST_PATH, GPU_FREQ_CONSTRAINT);
 }
 
 static struct hw_module_methods_t power_module_methods = {
