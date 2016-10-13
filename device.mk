@@ -200,8 +200,12 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PACKAGES += \
     power.flounder \
     lights.flounder \
-    sensors.flounder \
     hwcomposer.flounder
+
+# Sensors HAL
+PRODUCT_PACKAGES += \
+    android.hardware.sensors@1.0-impl \
+    sensors.flounder
 
 # Thermal HAL
 PRODUCT_PACKAGES += \
