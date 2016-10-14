@@ -40,7 +40,7 @@
 #define WAKE_GESTURE_PATH "/sys/devices/platform/spi-tegra114.2/spi_master/spi2/spi2.0/input/input0/wake_gesture"
 #define IO_IS_BUSY_PATH "/sys/devices/system/cpu/cpufreq/interactive/io_is_busy"
 #define LOW_POWER_MAX_FREQ "1020000"
-#define NORMAL_MAX_FREQ "2295000"
+#define NORMAL_MAX_FREQ "2499000"
 
 struct flounder_power_module {
     struct power_module base;
