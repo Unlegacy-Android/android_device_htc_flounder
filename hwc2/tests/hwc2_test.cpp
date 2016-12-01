@@ -405,6 +405,26 @@ public:
         ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer dataspace";
     }
 
+    void set_layer_plane_alpha(hwc2_display_t display, hwc2_layer_t layer,
+            float alpha, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_LAYER_PLANE_ALPHA pfn = (HWC2_PFN_SET_LAYER_PLANE_ALPHA)
+                get_function(HWC2_FUNCTION_SET_LAYER_PLANE_ALPHA);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, layer, alpha);
+    }
+
+    void set_layer_plane_alpha(hwc2_display_t display, hwc2_layer_t layer,
+            float alpha)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_layer_plane_alpha(display, layer,
+                alpha, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer plane alpha "
+                << alpha;
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -1525,6 +1545,91 @@ TEST_F(hwc2_test, SET_LAYER_DATSPACE_update)
             EXPECT_NO_FATAL_FAILURE(set_layer_dataspace(display, layer,
                     test_layer.get_dataspace()));
         } while (test_layer.advance_dataspace());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_PLANE_ALPHA)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE);
+
+        do {
+            do {
+                ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+                ASSERT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
+                        test_layer.get_blend_mode()));
+                EXPECT_NO_FATAL_FAILURE(set_layer_plane_alpha(display, layer,
+                        test_layer.get_plane_alpha()));
+
+                ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+            } while (test_layer.advance_plane_alpha());
+        } while (test_layer.advance_blend_mode());
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_PLANE_ALPHA_bad_layer)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer = 0;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_DEFAULT);
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_plane_alpha(display, layer,
+                test_layer.get_plane_alpha(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_plane_alpha(display, layer + 1,
+                test_layer.get_plane_alpha(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_plane_alpha(display, layer,
+                test_layer.get_plane_alpha(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_PLANE_ALPHA_update)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE);
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        do {
+            do {
+                ASSERT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
+                        test_layer.get_blend_mode()));
+                EXPECT_NO_FATAL_FAILURE(set_layer_plane_alpha(display, layer,
+                        test_layer.get_plane_alpha()));
+            } while (test_layer.advance_plane_alpha());
+        } while (test_layer.advance_blend_mode());
 
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
     }

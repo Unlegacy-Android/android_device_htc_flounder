@@ -120,4 +120,17 @@ protected:
     static const std::vector<android_dataspace_t> complete_dataspaces;
 };
 
+
+class hwc2_test_plane_alpha : public hwc2_test_property<float> {
+public:
+    hwc2_test_plane_alpha(hwc2_test_coverage_t coverage);
+
+    std::string dump() const;
+
+protected:
+    static const std::vector<float> default_plane_alphas;
+    static const std::vector<float> basic_plane_alphas;
+    static const std::vector<float> complete_plane_alphas;
+};
+
 #endif /* ifndef _HWC2_TEST_PROPERTIES_H */

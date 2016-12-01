@@ -21,7 +21,8 @@
 hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage)
     : blend_mode(coverage),
       composition(coverage),
-      dataspace(coverage) { }
+      dataspace(coverage),
+      plane_alpha(coverage) { }
 
 std::string hwc2_test_layer::dump() const
 {
@@ -56,6 +57,11 @@ android_dataspace_t hwc2_test_layer::get_dataspace() const
     return dataspace.get();
 }
 
+float hwc2_test_layer::get_plane_alpha() const
+{
+    return plane_alpha.get();
+}
+
 bool hwc2_test_layer::advance_blend_mode()
 {
     return blend_mode.advance();
@@ -69,4 +75,9 @@ bool hwc2_test_layer::advance_composition()
 bool hwc2_test_layer::advance_dataspace()
 {
     return dataspace.advance();
+}
+
+bool hwc2_test_layer::advance_plane_alpha()
+{
+    return plane_alpha.advance();
 }

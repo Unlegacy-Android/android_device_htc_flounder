@@ -144,3 +144,29 @@ const std::vector<android_dataspace_t> hwc2_test_dataspace::complete_dataspaces 
     HAL_DATASPACE_V0_BT709,
     HAL_DATASPACE_DEPTH,
 };
+
+
+hwc2_test_plane_alpha::hwc2_test_plane_alpha(hwc2_test_coverage_t coverage)
+    : hwc2_test_property(
+            (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_plane_alphas:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_plane_alphas:
+            default_plane_alphas) { }
+
+std::string hwc2_test_plane_alpha::dump() const
+{
+    std::stringstream dmp;
+    dmp << "\tplane alpha: " << get() << "\n";
+    return dmp.str();
+}
+
+const std::vector<float> hwc2_test_plane_alpha::default_plane_alphas = {
+    1.0f,
+};
+
+const std::vector<float> hwc2_test_plane_alpha::basic_plane_alphas = {
+    1.0f, 0.5f,
+};
+
+const std::vector<float> hwc2_test_plane_alpha::complete_plane_alphas = {
+    1.0f, 0.75f, 0.5f, 0.25f, 0.0f,
+};
