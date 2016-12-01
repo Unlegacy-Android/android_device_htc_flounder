@@ -22,7 +22,8 @@ hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage)
     : blend_mode(coverage),
       composition(coverage),
       dataspace(coverage),
-      plane_alpha(coverage) { }
+      plane_alpha(coverage),
+      transform(coverage) { }
 
 std::string hwc2_test_layer::dump() const
 {
@@ -62,6 +63,11 @@ float hwc2_test_layer::get_plane_alpha() const
     return plane_alpha.get();
 }
 
+hwc_transform_t hwc2_test_layer::get_transform() const
+{
+    return transform.get();
+}
+
 bool hwc2_test_layer::advance_blend_mode()
 {
     return blend_mode.advance();
@@ -80,4 +86,9 @@ bool hwc2_test_layer::advance_dataspace()
 bool hwc2_test_layer::advance_plane_alpha()
 {
     return plane_alpha.advance();
+}
+
+bool hwc2_test_layer::advance_transform()
+{
+    return transform.advance();
 }

@@ -133,4 +133,17 @@ protected:
     static const std::vector<float> complete_plane_alphas;
 };
 
+
+class hwc2_test_transform : public hwc2_test_property<hwc_transform_t> {
+public:
+    hwc2_test_transform(hwc2_test_coverage_t coverage);
+
+    std::string dump() const;
+
+protected:
+    static const std::vector<hwc_transform_t> default_transforms;
+    static const std::vector<hwc_transform_t> basic_transforms;
+    static const std::vector<hwc_transform_t> complete_transforms;
+};
+
 #endif /* ifndef _HWC2_TEST_PROPERTIES_H */
