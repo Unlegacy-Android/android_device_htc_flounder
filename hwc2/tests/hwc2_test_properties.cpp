@@ -18,6 +18,35 @@
 
 #include "hwc2_test_properties.h"
 
+hwc2_test_blend_mode::hwc2_test_blend_mode(hwc2_test_coverage_t coverage)
+    : hwc2_test_property(
+            (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_blend_modes:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_blend_modes:
+            default_blend_modes) { }
+
+std::string hwc2_test_blend_mode::dump() const
+{
+    std::stringstream dmp;
+    dmp << "\tblend mode: " << getBlendModeName(get()) << "\n";
+    return dmp.str();
+}
+
+const std::vector<hwc2_blend_mode_t> hwc2_test_blend_mode::default_blend_modes = {
+    HWC2_BLEND_MODE_NONE,
+};
+
+const std::vector<hwc2_blend_mode_t> hwc2_test_blend_mode::basic_blend_modes = {
+    HWC2_BLEND_MODE_NONE,
+    HWC2_BLEND_MODE_PREMULTIPLIED,
+};
+
+const std::vector<hwc2_blend_mode_t> hwc2_test_blend_mode::complete_blend_modes = {
+    HWC2_BLEND_MODE_NONE,
+    HWC2_BLEND_MODE_PREMULTIPLIED,
+    HWC2_BLEND_MODE_COVERAGE,
+};
+
+
 hwc2_test_composition::hwc2_test_composition(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_compositions:

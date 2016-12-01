@@ -19,26 +19,40 @@
 #include "hwc2_test_layer.h"
 
 hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage)
-    : composition(coverage) { }
+    : blend_mode(coverage),
+      composition(coverage) { }
 
 std::string hwc2_test_layer::dump() const
 {
     std::stringstream dmp;
 
     dmp << "layer: \n";
-    dmp << composition.dump();
+
+    for (auto property: properties)
+        dmp << property->dump();
 
     return dmp.str();
 }
 
 void hwc2_test_layer::reset()
 {
-    composition.reset();
+    for (auto property: properties)
+        property->reset();
+}
+
+hwc2_blend_mode_t hwc2_test_layer::get_blend_mode() const
+{
+    return blend_mode.get();
 }
 
 hwc2_composition_t hwc2_test_layer::get_composition() const
 {
     return composition.get();
+}
+
+bool hwc2_test_layer::advance_blend_mode()
+{
+    return blend_mode.advance();
 }
 
 bool hwc2_test_layer::advance_composition()

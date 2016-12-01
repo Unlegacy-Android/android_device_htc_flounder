@@ -17,6 +17,7 @@
 #ifndef _HWC2_TEST_PROPERTIES_H
 #define _HWC2_TEST_PROPERTIES_H
 
+#include <array>
 #include <vector>
 
 #define HWC2_INCLUDE_STRINGIFICATION
@@ -33,14 +34,27 @@ typedef enum {
 } hwc2_test_coverage_t;
 
 
+class hwc2_test_container {
+public:
+    virtual ~hwc2_test_container() { };
+
+    /* Resets the container */
+    virtual void reset() = 0;
+
+    /* Attempts to advance to the next valid value. Returns true if one can be
+     * found */
+    virtual bool advance() = 0;
+
+    virtual std::string dump() const = 0;
+};
+
+
 template <class T>
-class hwc2_test_property {
+class hwc2_test_property : public hwc2_test_container {
 public:
     hwc2_test_property(const std::vector<T> &list)
         : list(list),
           list_idx(0) { }
-
-    virtual ~hwc2_test_property() { };
 
     virtual void reset()
     {
@@ -62,11 +76,22 @@ public:
         return list.at(list_idx);
     }
 
-    virtual std::string dump() const = 0;
-
 protected:
     const std::vector<T> &list;
     uint32_t list_idx;
+};
+
+
+class hwc2_test_blend_mode : public hwc2_test_property<hwc2_blend_mode_t> {
+public:
+    hwc2_test_blend_mode(hwc2_test_coverage_t coverage);
+
+    std::string dump() const;
+
+protected:
+    static const std::vector<hwc2_blend_mode_t> default_blend_modes;
+    static const std::vector<hwc2_blend_mode_t> basic_blend_modes;
+    static const std::vector<hwc2_blend_mode_t> complete_blend_modes;
 };
 
 

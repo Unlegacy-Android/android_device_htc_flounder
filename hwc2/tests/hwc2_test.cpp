@@ -366,6 +366,26 @@ public:
                 " type " << getCompositionName(composition);
     }
 
+    void set_layer_blend_mode(hwc2_display_t display, hwc2_layer_t layer,
+            hwc2_blend_mode_t mode, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_LAYER_BLEND_MODE pfn = (HWC2_PFN_SET_LAYER_BLEND_MODE)
+                get_function(HWC2_FUNCTION_SET_LAYER_BLEND_MODE);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, layer, mode);
+    }
+
+    void set_layer_blend_mode(hwc2_display_t display, hwc2_layer_t layer,
+            hwc2_blend_mode_t mode)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer, mode,
+                &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer blend mode "
+                << getBlendModeName(mode);
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -1309,6 +1329,106 @@ TEST_F(hwc2_test, SET_LAYER_COMPOSITION_TYPE_update)
             EXPECT_TRUE(err == HWC2_ERROR_NONE || err == HWC2_ERROR_UNSUPPORTED)
                      << "returned wrong error code";
         } while (test_layer.advance_composition());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_BLEND_MODE)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE);
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+            EXPECT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
+                    test_layer.get_blend_mode()));
+
+            ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+        } while (test_layer.advance_blend_mode());
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_BLEND_MODE_bad_layer)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer = 0;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_DEFAULT);
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
+                test_layer.get_blend_mode(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer + 1,
+                test_layer.get_blend_mode(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
+                test_layer.get_blend_mode(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_BLEND_MODE_bad_parameter)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+    hwc2_blend_mode_t mode = HWC2_BLEND_MODE_INVALID;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer, mode,
+                &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_PARAMETER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_BLEND_MODE_update)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE);
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        do {
+            EXPECT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
+                    test_layer.get_blend_mode()));
+        } while (test_layer.advance_blend_mode());
 
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
     }
