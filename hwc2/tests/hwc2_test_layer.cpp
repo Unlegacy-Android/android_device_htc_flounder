@@ -18,12 +18,13 @@
 
 #include "hwc2_test_layer.h"
 
-hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage)
+hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage, uint32_t z_order)
     : blend_mode(coverage),
       composition(coverage),
       dataspace(coverage),
       plane_alpha(coverage),
-      transform(coverage) { }
+      transform(coverage),
+      z_order(z_order) { }
 
 std::string hwc2_test_layer::dump() const
 {
@@ -33,6 +34,8 @@ std::string hwc2_test_layer::dump() const
 
     for (auto property: properties)
         dmp << property->dump();
+
+    dmp << "\tz order: " << z_order << "\n";
 
     return dmp.str();
 }
@@ -66,6 +69,11 @@ float hwc2_test_layer::get_plane_alpha() const
 hwc_transform_t hwc2_test_layer::get_transform() const
 {
     return transform.get();
+}
+
+uint32_t hwc2_test_layer::get_z_order() const
+{
+    return z_order;
 }
 
 bool hwc2_test_layer::advance_blend_mode()

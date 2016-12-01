@@ -26,6 +26,7 @@
 #undef HWC2_USE_CPP11
 
 #include "hwc2_test_layer.h"
+#include "hwc2_test_layers.h"
 
 void hwc2_test_vsync_callback(hwc2_callback_data_t callback_data,
         hwc2_display_t display, int64_t timestamp);
@@ -443,6 +444,26 @@ public:
                 &err));
         ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer transform "
                 << getTransformName(transform);
+    }
+
+    void set_layer_z_order(hwc2_display_t display, hwc2_layer_t layer,
+            uint32_t z_order, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_LAYER_Z_ORDER pfn = (HWC2_PFN_SET_LAYER_Z_ORDER)
+                get_function(HWC2_FUNCTION_SET_LAYER_Z_ORDER);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, layer, z_order);
+    }
+
+    void set_layer_z_order(hwc2_display_t display, hwc2_layer_t layer,
+            uint32_t z_order)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_layer_z_order(display, layer, z_order,
+                &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer z order "
+                << z_order;
     }
 
 protected:
@@ -1727,6 +1748,84 @@ TEST_F(hwc2_test, SET_LAYER_TRANSFORM_update)
             EXPECT_NO_FATAL_FAILURE(set_layer_transform(display, layer,
                     test_layer.get_transform()));
         } while (test_layer.advance_transform());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_Z_ORDER)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    size_t layer_cnt = 10;
+    std::vector<hwc2_layer_t> layers;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+
+        ASSERT_NO_FATAL_FAILURE(create_layers(display, layers, layer_cnt));
+        hwc2_test_layers test_layers(layers, HWC2_TEST_COVERAGE_COMPLETE);
+
+        for (auto layer: layers)
+            EXPECT_NO_FATAL_FAILURE(set_layer_z_order(display, layer,
+                    test_layers.get_z_order(layer)));
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layers(display, layers));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_Z_ORDER_bad_layer)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer = 0;
+    uint32_t z_order = 0;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_z_order(display, layer, z_order,
+                &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_z_order(display, layer + 1, z_order,
+                &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_z_order(display, layer, z_order,
+                &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_Z_ORDER_update)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+    std::vector<uint32_t> z_orders = { static_cast<uint32_t>(0),
+            static_cast<uint32_t>(1), static_cast<uint32_t>(UINT32_MAX * 0.25),
+            static_cast<uint32_t>(UINT32_MAX * 0.5),
+            static_cast<uint32_t>(UINT32_MAX) };
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        for (uint32_t z_order: z_orders)
+            EXPECT_NO_FATAL_FAILURE(set_layer_z_order(display, layer, z_order));
 
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
     }

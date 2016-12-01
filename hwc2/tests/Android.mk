@@ -30,6 +30,7 @@ LOCAL_STATIC_LIBRARIES := libbase libadf libadfhwc
 LOCAL_SRC_FILES := \
     hwc2_test.cpp \
     hwc2_test_properties.cpp \
-    hwc2_test_layer.cpp
+    hwc2_test_layer.cpp \
+    hwc2_test_layers.cpp
 
 include $(BUILD_NATIVE_TEST)

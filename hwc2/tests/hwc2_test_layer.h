@@ -27,7 +27,7 @@
 
 class hwc2_test_layer {
 public:
-    hwc2_test_layer(hwc2_test_coverage_t coverage);
+    hwc2_test_layer(hwc2_test_coverage_t coverage, uint32_t z_order = 0);
 
     std::string dump() const;
 
@@ -38,6 +38,7 @@ public:
     android_dataspace_t    get_dataspace() const;
     float                  get_plane_alpha() const;
     hwc_transform_t        get_transform() const;
+    uint32_t               get_z_order() const;
 
     bool advance_blend_mode();
     bool advance_composition();
@@ -55,6 +56,8 @@ private:
     hwc2_test_dataspace dataspace;
     hwc2_test_plane_alpha plane_alpha;
     hwc2_test_transform transform;
+
+    uint32_t z_order;
 };
 
 #endif /* ifndef _HWC2_TEST_LAYER_H */
