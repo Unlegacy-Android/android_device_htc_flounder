@@ -33,19 +33,22 @@ public:
 
     void reset();
 
-    hwc2_blend_mode_t  get_blend_mode() const;
-    hwc2_composition_t get_composition() const;
+    hwc2_blend_mode_t      get_blend_mode() const;
+    hwc2_composition_t     get_composition() const;
+    android_dataspace_t    get_dataspace() const;
 
     bool advance_blend_mode();
     bool advance_composition();
+    bool advance_dataspace();
 
 private:
-    std::array<hwc2_test_container *, 2> properties = {{
-        &blend_mode, &composition
+    std::array<hwc2_test_container *, 3> properties = {{
+        &blend_mode, &composition, &dataspace
     }};
 
     hwc2_test_blend_mode blend_mode;
     hwc2_test_composition composition;
+    hwc2_test_dataspace dataspace;
 };
 
 #endif /* ifndef _HWC2_TEST_LAYER_H */

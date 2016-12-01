@@ -76,3 +76,71 @@ const std::vector<hwc2_composition_t> hwc2_test_composition::complete_compositio
     HWC2_COMPOSITION_CURSOR,
     HWC2_COMPOSITION_SIDEBAND,
 };
+
+
+hwc2_test_dataspace::hwc2_test_dataspace(hwc2_test_coverage_t coverage)
+    : hwc2_test_property(
+            (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_dataspaces:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_dataspaces:
+            default_dataspaces) { }
+
+std::string hwc2_test_dataspace::dump() const
+{
+    std::stringstream dmp;
+    dmp << "\tdataspace: " << get() << "\n";
+    return dmp.str();
+}
+
+const std::vector<android_dataspace_t> hwc2_test_dataspace::default_dataspaces = {
+    HAL_DATASPACE_UNKNOWN,
+};
+
+const std::vector<android_dataspace_t> hwc2_test_dataspace::basic_dataspaces = {
+    HAL_DATASPACE_UNKNOWN,
+    HAL_DATASPACE_V0_SRGB,
+};
+
+const std::vector<android_dataspace_t> hwc2_test_dataspace::complete_dataspaces = {
+    HAL_DATASPACE_UNKNOWN,
+    HAL_DATASPACE_ARBITRARY,
+    HAL_DATASPACE_STANDARD_SHIFT,
+    HAL_DATASPACE_STANDARD_MASK,
+    HAL_DATASPACE_STANDARD_UNSPECIFIED,
+    HAL_DATASPACE_STANDARD_BT709,
+    HAL_DATASPACE_STANDARD_BT601_625,
+    HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED,
+    HAL_DATASPACE_STANDARD_BT601_525,
+    HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED,
+    HAL_DATASPACE_STANDARD_BT2020,
+    HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE,
+    HAL_DATASPACE_STANDARD_BT470M,
+    HAL_DATASPACE_STANDARD_FILM,
+    HAL_DATASPACE_TRANSFER_SHIFT,
+    HAL_DATASPACE_TRANSFER_MASK,
+    HAL_DATASPACE_TRANSFER_UNSPECIFIED,
+    HAL_DATASPACE_TRANSFER_LINEAR,
+    HAL_DATASPACE_TRANSFER_SRGB,
+    HAL_DATASPACE_TRANSFER_SMPTE_170M,
+    HAL_DATASPACE_TRANSFER_GAMMA2_2,
+    HAL_DATASPACE_TRANSFER_GAMMA2_8,
+    HAL_DATASPACE_TRANSFER_ST2084,
+    HAL_DATASPACE_TRANSFER_HLG,
+    HAL_DATASPACE_RANGE_SHIFT,
+    HAL_DATASPACE_RANGE_MASK,
+    HAL_DATASPACE_RANGE_UNSPECIFIED,
+    HAL_DATASPACE_RANGE_FULL,
+    HAL_DATASPACE_RANGE_LIMITED,
+    HAL_DATASPACE_SRGB_LINEAR,
+    HAL_DATASPACE_V0_SRGB_LINEAR,
+    HAL_DATASPACE_SRGB,
+    HAL_DATASPACE_V0_SRGB,
+    HAL_DATASPACE_JFIF,
+    HAL_DATASPACE_V0_JFIF,
+    HAL_DATASPACE_BT601_625,
+    HAL_DATASPACE_V0_BT601_625,
+    HAL_DATASPACE_BT601_525,
+    HAL_DATASPACE_V0_BT601_525,
+    HAL_DATASPACE_BT709,
+    HAL_DATASPACE_V0_BT709,
+    HAL_DATASPACE_DEPTH,
+};

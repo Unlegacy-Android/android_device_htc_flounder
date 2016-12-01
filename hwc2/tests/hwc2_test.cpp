@@ -386,6 +386,25 @@ public:
                 << getBlendModeName(mode);
     }
 
+    void set_layer_dataspace(hwc2_display_t display, hwc2_layer_t layer,
+            android_dataspace_t dataspace, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_LAYER_DATASPACE pfn = (HWC2_PFN_SET_LAYER_DATASPACE)
+                get_function(HWC2_FUNCTION_SET_LAYER_DATASPACE);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, layer, dataspace);
+    }
+
+    void set_layer_dataspace(hwc2_display_t display, hwc2_layer_t layer,
+            android_dataspace_t dataspace)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_layer_dataspace(display, layer, dataspace,
+                &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer dataspace";
+    }
+
 protected:
     hwc2_function_pointer_t get_function(hwc2_function_descriptor_t descriptor)
     {
@@ -1429,6 +1448,83 @@ TEST_F(hwc2_test, SET_LAYER_BLEND_MODE_update)
             EXPECT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
                     test_layer.get_blend_mode()));
         } while (test_layer.advance_blend_mode());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_DATSPACE)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE);
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+            EXPECT_NO_FATAL_FAILURE(set_layer_dataspace(display, layer,
+                    test_layer.get_dataspace()));
+
+            ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+        } while (test_layer.advance_dataspace());
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_DATSPACE_bad_layer)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer = 0;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_DEFAULT);
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_dataspace(display, layer,
+                test_layer.get_dataspace(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_dataspace(display, layer + 1,
+                test_layer.get_dataspace(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_dataspace(display, layer,
+                test_layer.get_dataspace(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_DATSPACE_update)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE);
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        do {
+            EXPECT_NO_FATAL_FAILURE(set_layer_dataspace(display, layer,
+                    test_layer.get_dataspace()));
+        } while (test_layer.advance_dataspace());
 
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
     }

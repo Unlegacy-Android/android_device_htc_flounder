@@ -107,4 +107,17 @@ protected:
     static const std::vector<hwc2_composition_t> complete_compositions;
 };
 
+
+class hwc2_test_dataspace : public hwc2_test_property<android_dataspace_t> {
+public:
+    hwc2_test_dataspace(hwc2_test_coverage_t coverage);
+
+    std::string dump() const;
+
+protected:
+    static const std::vector<android_dataspace_t> default_dataspaces;
+    static const std::vector<android_dataspace_t> basic_dataspaces;
+    static const std::vector<android_dataspace_t> complete_dataspaces;
+};
+
 #endif /* ifndef _HWC2_TEST_PROPERTIES_H */
