@@ -19,7 +19,7 @@
 #include "hwc2_test_layer.h"
 
 hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage,
-        int32_t display_width, int32_t display_height, uint32_t z_order)
+        int32_t display_width, int32_t display_height)
     : buffer(),
       blend_mode(coverage),
       buffer_area(coverage, display_width, display_height),
@@ -33,7 +33,8 @@ hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage,
       source_crop(coverage),
       surface_damage(coverage),
       transform(coverage),
-      z_order(z_order)
+      visible_region(),
+      z_order(-1)
 {
     buffer_area.set_dependent(&buffer);
     buffer_area.set_dependent(&source_crop);
@@ -50,6 +51,7 @@ std::string hwc2_test_layer::dump() const
     for (auto property: properties)
         dmp << property->dump();
 
+    dmp << visible_region.dump();
     dmp << "\tz order: " << z_order << "\n";
 
     return dmp.str();
@@ -64,8 +66,20 @@ int hwc2_test_layer::get_buffer(buffer_handle_t *out_handle,
     return ret;
 }
 
+void hwc2_test_layer::set_z_order(uint32_t z_order)
+{
+    this->z_order = z_order;
+}
+
+void hwc2_test_layer::set_visible_region(const android::Region &region)
+{
+    return visible_region.set(region);
+}
+
 void hwc2_test_layer::reset()
 {
+    visible_region.release();
+
     for (auto property: properties)
         property->reset();
 }
@@ -118,6 +132,11 @@ const hwc_region_t hwc2_test_layer::get_surface_damage() const
 hwc_transform_t hwc2_test_layer::get_transform() const
 {
     return transform.get();
+}
+
+const hwc_region_t hwc2_test_layer::get_visible_region() const
+{
+    return visible_region.get();
 }
 
 uint32_t hwc2_test_layer::get_z_order() const
@@ -183,4 +202,11 @@ bool hwc2_test_layer::advance_surface_damage()
 bool hwc2_test_layer::advance_transform()
 {
     return transform.advance();
+}
+
+bool hwc2_test_layer::advance_visible_region()
+{
+    if (plane_alpha.advance())
+        return true;
+    return display_frame.advance();
 }

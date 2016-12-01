@@ -567,6 +567,27 @@ public:
                 << getTransformName(transform);
     }
 
+    void set_layer_visible_region(hwc2_display_t display, hwc2_layer_t layer,
+            const hwc_region_t &visible_region, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_LAYER_VISIBLE_REGION pfn =
+                (HWC2_PFN_SET_LAYER_VISIBLE_REGION)
+                get_function(HWC2_FUNCTION_SET_LAYER_VISIBLE_REGION);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, layer,
+                visible_region);
+    }
+
+    void set_layer_visible_region(hwc2_display_t display, hwc2_layer_t layer,
+            const hwc_region_t &visible_region)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_layer_visible_region(display, layer,
+                visible_region, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer visible region";
+    }
+
     void set_layer_z_order(hwc2_display_t display, hwc2_layer_t layer,
             uint32_t z_order, hwc2_error_t *out_err)
     {
@@ -2614,6 +2635,66 @@ TEST_F(hwc2_test, SET_LAYER_TRANSFORM_update)
         } while (test_layer.advance_transform());
 
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_VISIBLE_REGION)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    int32_t width, height;
+    size_t layer_cnt = 5;
+    std::vector<hwc2_layer_t> layers;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+
+        ASSERT_NO_FATAL_FAILURE(create_layers(display, layers, layer_cnt));
+        hwc2_test_layers test_layers(layers, HWC2_TEST_COVERAGE_BASIC, width,
+                height);
+
+        do {
+            for (auto &layer: layers)
+                EXPECT_NO_FATAL_FAILURE(set_layer_visible_region(display,
+                        layer, test_layers.get_visible_region(layer)));
+        } while (test_layers.advance_visible_regions());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layers(display, layers));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_VISIBLE_REGION_bad_layer)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    int32_t width, height;
+    hwc2_layer_t layer = 0;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_visible_region(display, layer, { },
+                &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_visible_region(display, layer + 1, { },
+                &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_visible_region(display, layer, { },
+                &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
     }
 }
 

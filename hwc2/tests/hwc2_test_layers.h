@@ -38,9 +38,14 @@ public:
 
     void reset();
 
-    uint32_t get_z_order(hwc2_layer_t layer) const;
+    bool advance_visible_regions();
+
+    const hwc_region_t get_visible_region(hwc2_layer_t layer) const;
+    uint32_t           get_z_order(hwc2_layer_t layer) const;
 
 private:
+    void set_visible_regions();
+
     std::map<hwc2_layer_t, hwc2_test_layer> test_layers;
 };
 
