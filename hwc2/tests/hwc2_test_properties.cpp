@@ -15,6 +15,7 @@
  */
 
 #include <sstream>
+#include <cutils/log.h>
 
 #include "hwc2_test_properties.h"
 
@@ -27,6 +28,7 @@ hwc2_test_buffer_area::hwc2_test_buffer_area(hwc2_test_coverage_t coverage,
       display_width(display_width),
       display_height(display_height),
       source_crop(nullptr),
+      surface_damage(nullptr),
       buffer_areas()
 {
     update();
@@ -44,7 +46,19 @@ std::string hwc2_test_buffer_area::dump() const
 void hwc2_test_buffer_area::set_dependent(hwc2_test_source_crop *source_crop)
 {
     this->source_crop = source_crop;
-    update_dependents();
+    if (source_crop) {
+        const std::pair<int32_t, int32_t> &curr = get();
+        source_crop->update_buffer_area(curr.first, curr.second);
+    }
+}
+
+void hwc2_test_buffer_area::set_dependent(hwc2_test_surface_damage *surface_damage)
+{
+    this->surface_damage = surface_damage;
+    if (surface_damage) {
+        const std::pair<int32_t, int32_t> &curr = get();
+        surface_damage->update_buffer_area(curr.first, curr.second);
+    }
 }
 
 void hwc2_test_buffer_area::update()
@@ -68,6 +82,8 @@ void hwc2_test_buffer_area::update_dependents()
 
     if (source_crop)
         source_crop->update_buffer_area(curr.first, curr.second);
+    if (surface_damage)
+        surface_damage->update_buffer_area(curr.first, curr.second);
 }
 
 const std::vector<float> hwc2_test_buffer_area::default_scalars = {
@@ -457,6 +473,106 @@ const std::vector<hwc_frect_t> hwc2_test_source_crop::complete_frect_scalars = {
     {0.5, 0.5, 1.0, 1.0},
     {0.0, 0.0, 0.25, 0.25},
     {0.25, 0.25, 0.75, 0.75},
+};
+
+
+hwc2_test_surface_damage::hwc2_test_surface_damage(hwc2_test_coverage_t coverage)
+    : hwc2_test_property(surface_damages),
+      region_scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_region_scalars:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_region_scalars:
+            default_region_scalars),
+      buffer_width(0),
+      buffer_height(0),
+      surface_damages()
+{
+    update();
+}
+
+hwc2_test_surface_damage::~hwc2_test_surface_damage()
+{
+    free_surface_damages();
+}
+
+std::string hwc2_test_surface_damage::dump() const
+{
+    std::stringstream dmp;
+
+    const hwc_region_t &curr = get();
+    dmp << "\tsurface damage: region count " << curr.numRects << "\n";
+    for (size_t i = 0; i < curr.numRects; i++) {
+        const hwc_rect_t &rect = curr.rects[i];
+        dmp << "\t\trect: left " << rect.left << ", top " << rect.top
+                << ", right " << rect.right << ", bottom " << rect.bottom << "\n";
+    }
+
+    return dmp.str();
+}
+
+void hwc2_test_surface_damage::update_buffer_area(int32_t buffer_width,
+        int32_t buffer_height)
+{
+    this->buffer_width = buffer_width;
+    this->buffer_height = buffer_height;
+    update();
+}
+
+void hwc2_test_surface_damage::update()
+{
+    free_surface_damages();
+
+    if (buffer_width == 0 && buffer_height == 0) {
+        surface_damages.push_back({0, nullptr});
+        return;
+    }
+
+    hwc_region_t damage;
+
+    for (const auto &region_scalar: region_scalars) {
+        damage.numRects = region_scalars.size();
+
+        if (damage.numRects > 0) {
+            hwc_rect_t *rects = new hwc_rect_t[damage.numRects];
+            if (!rects) {
+                ALOGW("failed to allocate new hwc_rect_t array");
+                continue;
+            }
+
+            for (size_t i = 0; i < region_scalar.size(); i++) {
+                rects[i].left = region_scalar[i].left * buffer_width;
+                rects[i].top = region_scalar[i].top * buffer_height;
+                rects[i].right = region_scalar[i].right * buffer_width;
+                rects[i].bottom = region_scalar[i].bottom * buffer_height;
+            }
+
+            damage.rects = static_cast<hwc_rect_t const *>(rects);
+        } else
+            damage.rects = nullptr;
+
+        surface_damages.push_back(damage);
+    }
+}
+
+void hwc2_test_surface_damage::free_surface_damages()
+{
+    for (hwc_region_t surface_damage: surface_damages)
+        if (surface_damage.numRects > 0 && surface_damage.rects)
+            delete[] surface_damage.rects;
+    surface_damages.clear();
+}
+
+const std::vector<std::vector<hwc_frect_t>> hwc2_test_surface_damage::default_region_scalars = {
+    {{}},
+};
+
+const std::vector<std::vector<hwc_frect_t>> hwc2_test_surface_damage::basic_region_scalars = {
+    {{}},
+    {{0.0, 0.0, 1.0, 1.0}},
+};
+
+const std::vector<std::vector<hwc_frect_t>> hwc2_test_surface_damage::complete_region_scalars = {
+    {{}},
+    {{0.0, 0.0, 1.0, 1.0}},
+    {{0.0, 0.0, 0.5, 0.5}, {0.5, 0.5, 1.0, 1.0}},
 };
 
 

@@ -29,10 +29,12 @@ hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage,
       display_frame(coverage, display_width, display_height),
       plane_alpha(coverage),
       source_crop(coverage),
+      surface_damage(coverage),
       transform(coverage),
       z_order(z_order)
 {
     buffer_area.set_dependent(&source_crop);
+    buffer_area.set_dependent(&surface_damage);
 }
 
 std::string hwc2_test_layer::dump() const
@@ -95,6 +97,11 @@ const hwc_frect_t hwc2_test_layer::get_source_crop() const
     return source_crop.get();
 }
 
+const hwc_region_t hwc2_test_layer::get_surface_damage() const
+{
+    return surface_damage.get();
+}
+
 hwc_transform_t hwc2_test_layer::get_transform() const
 {
     return transform.get();
@@ -148,6 +155,11 @@ bool hwc2_test_layer::advance_plane_alpha()
 bool hwc2_test_layer::advance_source_crop()
 {
     return source_crop.advance();
+}
+
+bool hwc2_test_layer::advance_surface_damage()
+{
+    return surface_damage.advance();
 }
 
 bool hwc2_test_layer::advance_transform()

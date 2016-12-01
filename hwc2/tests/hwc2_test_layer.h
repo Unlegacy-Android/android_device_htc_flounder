@@ -42,6 +42,7 @@ public:
     const hwc_rect_t       get_display_frame() const;
     float                  get_plane_alpha() const;
     const hwc_frect_t      get_source_crop() const;
+    const hwc_region_t     get_surface_damage() const;
     hwc_transform_t        get_transform() const;
     uint32_t               get_z_order() const;
 
@@ -54,12 +55,13 @@ public:
     bool advance_display_frame();
     bool advance_plane_alpha();
     bool advance_source_crop();
+    bool advance_surface_damage();
     bool advance_transform();
 
 private:
-    std::array<hwc2_test_container *, 9> properties = {{
+    std::array<hwc2_test_container *, 10> properties = {{
         &blend_mode, &color, &composition, &cursor, &dataspace, &display_frame,
-        &plane_alpha, &source_crop, &transform
+        &plane_alpha, &source_crop, &surface_damage, &transform
     }};
 
     hwc2_test_blend_mode blend_mode;
@@ -71,6 +73,7 @@ private:
     hwc2_test_display_frame display_frame;
     hwc2_test_plane_alpha plane_alpha;
     hwc2_test_source_crop source_crop;
+    hwc2_test_surface_damage surface_damage;
     hwc2_test_transform transform;
 
     uint32_t z_order;

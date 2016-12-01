@@ -88,6 +88,7 @@ protected:
 
 
 class hwc2_test_source_crop;
+class hwc2_test_surface_damage;
 
 class hwc2_test_buffer_area : public hwc2_test_property<std::pair<int32_t, int32_t>> {
 public:
@@ -97,6 +98,7 @@ public:
     std::string dump() const;
 
     void set_dependent(hwc2_test_source_crop *source_crop);
+    void set_dependent(hwc2_test_surface_damage *surface_damage);
 
 protected:
     void update();
@@ -111,6 +113,7 @@ protected:
     int32_t display_height;
 
     hwc2_test_source_crop *source_crop;
+    hwc2_test_surface_damage *surface_damage;
 
     std::vector<std::pair<int32_t, int32_t>> buffer_areas;
 };
@@ -246,6 +249,31 @@ protected:
     float buffer_height;
 
     std::vector<hwc_frect_t> source_crops;
+};
+
+
+class hwc2_test_surface_damage : public hwc2_test_property<hwc_region_t> {
+public:
+    hwc2_test_surface_damage(hwc2_test_coverage_t coverage);
+    ~hwc2_test_surface_damage();
+
+    std::string dump() const;
+
+    void update_buffer_area(int32_t buffer_width, int32_t buffer_height);
+
+protected:
+    void update();
+    void free_surface_damages();
+
+    const std::vector<std::vector<hwc_frect_t>> &region_scalars;
+    const static std::vector<std::vector<hwc_frect_t>> default_region_scalars;
+    const static std::vector<std::vector<hwc_frect_t>> basic_region_scalars;
+    const static std::vector<std::vector<hwc_frect_t>> complete_region_scalars;
+
+    int32_t buffer_width;
+    int32_t buffer_height;
+
+    std::vector<hwc_region_t> surface_damages;
 };
 
 
