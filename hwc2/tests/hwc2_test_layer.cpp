@@ -20,6 +20,7 @@
 
 hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage, uint32_t z_order)
     : blend_mode(coverage),
+      color(coverage),
       composition(coverage),
       dataspace(coverage),
       plane_alpha(coverage),
@@ -51,6 +52,11 @@ hwc2_blend_mode_t hwc2_test_layer::get_blend_mode() const
     return blend_mode.get();
 }
 
+const hwc_color_t hwc2_test_layer::get_color() const
+{
+    return color.get();
+}
+
 hwc2_composition_t hwc2_test_layer::get_composition() const
 {
     return composition.get();
@@ -79,6 +85,11 @@ uint32_t hwc2_test_layer::get_z_order() const
 bool hwc2_test_layer::advance_blend_mode()
 {
     return blend_mode.advance();
+}
+
+bool hwc2_test_layer::advance_color()
+{
+    return color.advance();
 }
 
 bool hwc2_test_layer::advance_composition()

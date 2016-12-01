@@ -387,6 +387,24 @@ public:
                 << getBlendModeName(mode);
     }
 
+    void set_layer_color(hwc2_display_t display, hwc2_layer_t layer,
+            hwc_color_t color, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_LAYER_COLOR pfn = (HWC2_PFN_SET_LAYER_COLOR)
+                get_function(HWC2_FUNCTION_SET_LAYER_COLOR);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, layer, color);
+    }
+
+    void set_layer_color(hwc2_display_t display, hwc2_layer_t layer,
+            hwc_color_t color)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_layer_color(display, layer, color, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer color";
+    }
+
     void set_layer_dataspace(hwc2_display_t display, hwc2_layer_t layer,
             android_dataspace_t dataspace, hwc2_error_t *out_err)
     {
@@ -1509,6 +1527,126 @@ TEST_F(hwc2_test, SET_LAYER_BLEND_MODE_update)
             EXPECT_NO_FATAL_FAILURE(set_layer_blend_mode(display, layer,
                     test_layer.get_blend_mode()));
         } while (test_layer.advance_blend_mode());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_COLOR)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE);
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+            ASSERT_NO_FATAL_FAILURE(set_layer_composition_type(display, layer,
+                        HWC2_COMPOSITION_SOLID_COLOR, &err));
+            if (err != HWC2_ERROR_NONE) {
+                EXPECT_EQ(err, HWC2_ERROR_UNSUPPORTED) << "returned wrong error"
+                        " code";
+                ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+                return;
+            }
+
+            EXPECT_NO_FATAL_FAILURE(set_layer_color(display, layer,
+                    test_layer.get_color()));
+
+            ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+        } while (test_layer.advance_color());
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_COLOR_bad_layer)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer = 0;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_DEFAULT);
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_color(display, layer,
+                test_layer.get_color(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_color(display, layer + 1,
+                test_layer.get_color(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_color(display, layer,
+                test_layer.get_color(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_COLOR_composition_type_unset)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_BASIC);
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+            EXPECT_NO_FATAL_FAILURE(set_layer_color(display, layer,
+                    test_layer.get_color()));
+
+            ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+        } while (test_layer.advance_color());
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_COLOR_update)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE);
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_composition_type(display, layer,
+                    HWC2_COMPOSITION_SOLID_COLOR, &err));
+        if (err != HWC2_ERROR_NONE) {
+            EXPECT_EQ(err, HWC2_ERROR_UNSUPPORTED) << "returned wrong error"
+                    " code";
+            ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+            return;
+        }
+
+        do {
+            EXPECT_NO_FATAL_FAILURE(set_layer_color(display, layer,
+                    test_layer.get_color()));
+        } while (test_layer.advance_color());
 
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
     }

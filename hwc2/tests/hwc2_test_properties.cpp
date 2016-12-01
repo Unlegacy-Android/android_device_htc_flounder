@@ -47,6 +47,51 @@ const std::vector<hwc2_blend_mode_t> hwc2_test_blend_mode::complete_blend_modes 
 };
 
 
+hwc2_test_color::hwc2_test_color(hwc2_test_coverage_t coverage)
+    : hwc2_test_property(
+            (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_colors:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_colors:
+            default_colors) { }
+
+std::string hwc2_test_color::dump() const
+{
+    std::stringstream dmp;
+    const hwc_color_t &color = get();
+    dmp << "\tcolor: r " << std::to_string(color.r) << ", g "
+            << std::to_string(color.g) << ", b " << std::to_string(color.b)
+            << ", a " << std::to_string(color.a) << "\n";
+    return dmp.str();
+}
+
+const std::vector<hwc_color_t> hwc2_test_color::default_colors = {
+    {UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX},
+};
+
+const std::vector<hwc_color_t> hwc2_test_color::basic_colors = {
+    {UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX},
+    {        0,         0,         0,         0},
+};
+
+const std::vector<hwc_color_t> hwc2_test_color::complete_colors = {
+    {UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX},
+    {UINT8_MAX, UINT8_MAX, UINT8_MAX,         0},
+    {UINT8_MAX, UINT8_MAX,         0, UINT8_MAX},
+    {UINT8_MAX, UINT8_MAX,         0,         0},
+    {UINT8_MAX,         0, UINT8_MAX, UINT8_MAX},
+    {UINT8_MAX,         0, UINT8_MAX,         0},
+    {UINT8_MAX,         0,         0, UINT8_MAX},
+    {UINT8_MAX,         0,         0,         0},
+    {        0, UINT8_MAX, UINT8_MAX, UINT8_MAX},
+    {        0, UINT8_MAX, UINT8_MAX,         0},
+    {        0, UINT8_MAX,         0, UINT8_MAX},
+    {        0, UINT8_MAX,         0,         0},
+    {        0,         0, UINT8_MAX, UINT8_MAX},
+    {        0,         0, UINT8_MAX,         0},
+    {        0,         0,         0, UINT8_MAX},
+    {        0,         0,         0,         0},
+};
+
+
 hwc2_test_composition::hwc2_test_composition(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_compositions:
