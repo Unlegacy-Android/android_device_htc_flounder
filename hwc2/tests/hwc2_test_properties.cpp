@@ -18,6 +18,71 @@
 
 #include "hwc2_test_properties.h"
 
+hwc2_test_buffer_area::hwc2_test_buffer_area(hwc2_test_coverage_t coverage,
+        int32_t display_width, int32_t display_height)
+    : hwc2_test_property(buffer_areas),
+      scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_scalars:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_scalars:
+            default_scalars),
+      display_width(display_width),
+      display_height(display_height),
+      source_crop(nullptr),
+      buffer_areas()
+{
+    update();
+}
+
+std::string hwc2_test_buffer_area::dump() const
+{
+    std::stringstream dmp;
+    const std::pair<int32_t, int32_t> &curr = get();
+    dmp << "\tbuffer area: width " << curr.first << ", height " << curr.second
+            << "\n";
+    return dmp.str();
+}
+
+void hwc2_test_buffer_area::set_dependent(hwc2_test_source_crop *source_crop)
+{
+    this->source_crop = source_crop;
+    update_dependents();
+}
+
+void hwc2_test_buffer_area::update()
+{
+    buffer_areas.clear();
+
+    if (display_width == 0 && display_height == 0) {
+        buffer_areas.push_back({0, 0});
+        return;
+    }
+
+    for (auto scalar: scalars)
+        buffer_areas.push_back({scalar * display_width, scalar * display_height});
+
+    update_dependents();
+}
+
+void hwc2_test_buffer_area::update_dependents()
+{
+    const std::pair<int32_t, int32_t> &curr = get();
+
+    if (source_crop)
+        source_crop->update_buffer_area(curr.first, curr.second);
+}
+
+const std::vector<float> hwc2_test_buffer_area::default_scalars = {
+    1.0f,
+};
+
+const std::vector<float> hwc2_test_buffer_area::basic_scalars = {
+    1.0f, 0.5f,
+};
+
+const std::vector<float> hwc2_test_buffer_area::complete_scalars = {
+    1.0f, 0.75f, 0.5f
+};
+
+
 hwc2_test_blend_mode::hwc2_test_blend_mode(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_blend_modes:
@@ -275,6 +340,73 @@ const std::vector<float> hwc2_test_plane_alpha::basic_plane_alphas = {
 
 const std::vector<float> hwc2_test_plane_alpha::complete_plane_alphas = {
     1.0f, 0.75f, 0.5f, 0.25f, 0.0f,
+};
+
+
+hwc2_test_source_crop::hwc2_test_source_crop(hwc2_test_coverage_t coverage,
+        float buffer_width, float buffer_height)
+    : hwc2_test_property(source_crops),
+      frect_scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_frect_scalars:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_frect_scalars:
+            default_frect_scalars),
+      buffer_width(buffer_width),
+      buffer_height(buffer_height),
+      source_crops()
+{
+    update();
+}
+
+std::string hwc2_test_source_crop::dump() const
+{
+    std::stringstream dmp;
+    const hwc_frect_t &source_crop = get();
+    dmp << "\tsource crop: left " << source_crop.left << ", top "
+            << source_crop.top << ", right " << source_crop.right << ", bottom "
+            << source_crop.bottom << "\n";
+    return dmp.str();
+}
+
+void hwc2_test_source_crop::update_buffer_area(float buffer_width,
+        float buffer_height)
+{
+    this->buffer_width = buffer_width;
+    this->buffer_height = buffer_height;
+    update();
+}
+
+void hwc2_test_source_crop::update()
+{
+    source_crops.clear();
+
+    if (buffer_width == 0 && buffer_height == 0) {
+        source_crops.push_back({0, 0, 0, 0});
+        return;
+    }
+
+    for (const auto &frect_scalar: frect_scalars)
+        source_crops.push_back({
+                frect_scalar.left * buffer_width,
+                frect_scalar.top * buffer_height,
+                frect_scalar.right * buffer_width,
+                frect_scalar.bottom * buffer_height});
+}
+
+const std::vector<hwc_frect_t> hwc2_test_source_crop::default_frect_scalars = {
+    {0.0, 0.0, 1.0, 1.0},
+};
+
+const std::vector<hwc_frect_t> hwc2_test_source_crop::basic_frect_scalars = {
+    {0.0, 0.0, 1.0, 1.0},
+    {0.0, 0.0, 0.5, 0.5},
+    {0.5, 0.5, 1.0, 1.0},
+};
+
+const std::vector<hwc_frect_t> hwc2_test_source_crop::complete_frect_scalars = {
+    {0.0, 0.0, 1.0, 1.0},
+    {0.0, 0.0, 0.5, 0.5},
+    {0.5, 0.5, 1.0, 1.0},
+    {0.0, 0.0, 0.25, 0.25},
+    {0.25, 0.25, 0.75, 0.75},
 };
 
 

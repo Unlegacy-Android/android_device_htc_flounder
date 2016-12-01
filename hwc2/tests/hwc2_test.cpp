@@ -465,6 +465,26 @@ public:
                 << alpha;
     }
 
+    void set_layer_source_crop(hwc2_display_t display, hwc2_layer_t layer,
+            const hwc_frect_t &source_crop, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_LAYER_SOURCE_CROP pfn =
+                (HWC2_PFN_SET_LAYER_SOURCE_CROP)
+                get_function(HWC2_FUNCTION_SET_LAYER_SOURCE_CROP);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, layer, source_crop);
+    }
+
+    void set_layer_source_crop(hwc2_display_t display, hwc2_layer_t layer,
+            const hwc_frect_t &source_crop)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_layer_source_crop(display, layer,
+                source_crop, &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set layer source crop";
+    }
+
     void set_layer_transform(hwc2_display_t display, hwc2_layer_t layer,
             hwc_transform_t transform, hwc2_error_t *out_err)
     {
@@ -1967,6 +1987,93 @@ TEST_F(hwc2_test, SET_LAYER_PLANE_ALPHA_update)
                         test_layer.get_plane_alpha()));
             } while (test_layer.advance_plane_alpha());
         } while (test_layer.advance_blend_mode());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_SOURCE_CROP)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+    int32_t width, height;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE, width, height);
+
+        do {
+            do {
+                ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+                EXPECT_NO_FATAL_FAILURE(set_layer_source_crop(display, layer,
+                        test_layer.get_source_crop()));
+
+                ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+            } while (test_layer.advance_source_crop());
+        } while (test_layer.advance_buffer_area());
+    }
+}
+
+TEST_F(hwc2_test, SET_LAYER_SOURCE_CROP_bad_layer)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer = 0;
+    int32_t width, height;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_DEFAULT, width, height);
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_source_crop(display, layer,
+                test_layer.get_source_crop(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_source_crop(display, layer + 1,
+                test_layer.get_source_crop(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_layer_source_crop(display, layer,
+                test_layer.get_source_crop(), &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+   }
+}
+
+TEST_F(hwc2_test, SET_LAYER_SOURCE_CROP_update)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+    int32_t width, height;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE, width, height);
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        do {
+            do {
+                EXPECT_NO_FATAL_FAILURE(set_layer_source_crop(display, layer,
+                        test_layer.get_source_crop()));
+            } while (test_layer.advance_source_crop());
+        } while (test_layer.advance_buffer_area());
 
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
     }

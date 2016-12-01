@@ -40,29 +40,34 @@ public:
     android_dataspace_t    get_dataspace() const;
     const hwc_rect_t       get_display_frame() const;
     float                  get_plane_alpha() const;
+    const hwc_frect_t      get_source_crop() const;
     hwc_transform_t        get_transform() const;
     uint32_t               get_z_order() const;
 
     bool advance_blend_mode();
+    bool advance_buffer_area();
     bool advance_color();
     bool advance_composition();
     bool advance_dataspace();
     bool advance_display_frame();
     bool advance_plane_alpha();
+    bool advance_source_crop();
     bool advance_transform();
 
 private:
-    std::array<hwc2_test_container *, 7> properties = {{
+    std::array<hwc2_test_container *, 8> properties = {{
         &blend_mode, &color, &composition, &dataspace, &display_frame,
-        &plane_alpha, &transform
+        &plane_alpha, &source_crop, &transform
     }};
 
     hwc2_test_blend_mode blend_mode;
+    hwc2_test_buffer_area buffer_area;
     hwc2_test_color color;
     hwc2_test_composition composition;
     hwc2_test_dataspace dataspace;
     hwc2_test_display_frame display_frame;
     hwc2_test_plane_alpha plane_alpha;
+    hwc2_test_source_crop source_crop;
     hwc2_test_transform transform;
 
     uint32_t z_order;

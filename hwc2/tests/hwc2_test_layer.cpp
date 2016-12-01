@@ -21,13 +21,18 @@
 hwc2_test_layer::hwc2_test_layer(hwc2_test_coverage_t coverage,
         int32_t display_width, int32_t display_height, uint32_t z_order)
     : blend_mode(coverage),
+      buffer_area(coverage, display_width, display_height),
       color(coverage),
       composition(coverage),
       dataspace(coverage),
       display_frame(coverage, display_width, display_height),
       plane_alpha(coverage),
+      source_crop(coverage),
       transform(coverage),
-      z_order(z_order) { }
+      z_order(z_order)
+{
+    buffer_area.set_dependent(&source_crop);
+}
 
 std::string hwc2_test_layer::dump() const
 {
@@ -79,6 +84,11 @@ float hwc2_test_layer::get_plane_alpha() const
     return plane_alpha.get();
 }
 
+const hwc_frect_t hwc2_test_layer::get_source_crop() const
+{
+    return source_crop.get();
+}
+
 hwc_transform_t hwc2_test_layer::get_transform() const
 {
     return transform.get();
@@ -92,6 +102,11 @@ uint32_t hwc2_test_layer::get_z_order() const
 bool hwc2_test_layer::advance_blend_mode()
 {
     return blend_mode.advance();
+}
+
+bool hwc2_test_layer::advance_buffer_area()
+{
+    return buffer_area.advance();
 }
 
 bool hwc2_test_layer::advance_color()
@@ -117,6 +132,11 @@ bool hwc2_test_layer::advance_display_frame()
 bool hwc2_test_layer::advance_plane_alpha()
 {
     return plane_alpha.advance();
+}
+
+bool hwc2_test_layer::advance_source_crop()
+{
+    return source_crop.advance();
 }
 
 bool hwc2_test_layer::advance_transform()

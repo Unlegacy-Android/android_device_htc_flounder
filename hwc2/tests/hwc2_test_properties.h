@@ -65,9 +65,11 @@ public:
     {
         if (list_idx + 1 < list.size()) {
             list_idx++;
+            update_dependents();
             return true;
         }
         reset();
+        update_dependents();
         return false;
     }
 
@@ -77,8 +79,40 @@ public:
     }
 
 protected:
+    /* If a derived class has dependents, override this function */
+    virtual void update_dependents() { }
+
     const std::vector<T> &list;
     uint32_t list_idx;
+};
+
+
+class hwc2_test_source_crop;
+
+class hwc2_test_buffer_area : public hwc2_test_property<std::pair<int32_t, int32_t>> {
+public:
+    hwc2_test_buffer_area(hwc2_test_coverage_t coverage, int32_t display_width,
+            int32_t display_height);
+
+    std::string dump() const;
+
+    void set_dependent(hwc2_test_source_crop *source_crop);
+
+protected:
+    void update();
+    void update_dependents();
+
+    const std::vector<float> &scalars;
+    static const std::vector<float> default_scalars;
+    static const std::vector<float> basic_scalars;
+    static const std::vector<float> complete_scalars;
+
+    int32_t display_width;
+    int32_t display_height;
+
+    hwc2_test_source_crop *source_crop;
+
+    std::vector<std::pair<int32_t, int32_t>> buffer_areas;
 };
 
 
@@ -166,6 +200,30 @@ protected:
     static const std::vector<float> default_plane_alphas;
     static const std::vector<float> basic_plane_alphas;
     static const std::vector<float> complete_plane_alphas;
+};
+
+
+class hwc2_test_source_crop : public hwc2_test_property<hwc_frect_t> {
+public:
+    hwc2_test_source_crop(hwc2_test_coverage_t coverage, float buffer_width = 0,
+            float buffer_height = 0);
+
+    std::string dump() const;
+
+    void update_buffer_area(float buffer_width, float buffer_height);
+
+protected:
+    void update();
+
+    const std::vector<hwc_frect_t> &frect_scalars;
+    const static std::vector<hwc_frect_t> default_frect_scalars;
+    const static std::vector<hwc_frect_t> basic_frect_scalars;
+    const static std::vector<hwc_frect_t> complete_frect_scalars;
+
+    float buffer_width;
+    float buffer_height;
+
+    std::vector<hwc_frect_t> source_crops;
 };
 
 
