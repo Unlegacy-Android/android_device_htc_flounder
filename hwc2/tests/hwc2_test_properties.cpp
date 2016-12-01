@@ -191,6 +191,67 @@ const std::vector<android_dataspace_t> hwc2_test_dataspace::complete_dataspaces 
 };
 
 
+hwc2_test_display_frame::hwc2_test_display_frame(hwc2_test_coverage_t coverage,
+        int32_t display_width, int32_t display_height)
+    : hwc2_test_property(display_frames),
+      frect_scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_frect_scalars:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_frect_scalars:
+            default_frect_scalars),
+      display_width(display_width),
+      display_height(display_height),
+      display_frames()
+{
+    update();
+}
+
+std::string hwc2_test_display_frame::dump() const
+{
+    std::stringstream dmp;
+    const hwc_rect_t &display_frame = get();
+    dmp << "\tdisplay frame: left " << display_frame.left << ", top "
+            << display_frame.top << ", right " << display_frame.right
+            << ", bottom " << display_frame.bottom << "\n";
+    return dmp.str();
+}
+
+void hwc2_test_display_frame::update()
+{
+    display_frames.clear();
+
+    if (display_width == 0 && display_height == 0) {
+        display_frames.push_back({0, 0, 0, 0});
+        return;
+    }
+
+    for (const auto &frect_scalar: frect_scalars)
+        display_frames.push_back({
+                static_cast<int>(frect_scalar.left * display_width),
+                static_cast<int>(frect_scalar.top * display_height),
+                static_cast<int>(frect_scalar.right * display_width),
+                static_cast<int>(frect_scalar.bottom * display_height)});
+}
+
+const std::vector<hwc_frect_t> hwc2_test_display_frame::default_frect_scalars = {
+    {0.0, 0.0, 1.0, 1.0},
+};
+
+const std::vector<hwc_frect_t> hwc2_test_display_frame::basic_frect_scalars = {
+    {0.0, 0.0, 1.0, 1.0},
+    {0.0, 0.0, 1.0, 0.05},
+    {0.0, 0.95, 1.0, 1.0},
+};
+
+const std::vector<hwc_frect_t> hwc2_test_display_frame::complete_frect_scalars = {
+    {0.0, 0.0, 1.0, 1.0},
+    {0.0, 0.05, 1.0, 0.95},
+    {0.0, 0.05, 1.0, 1.0},
+    {0.0, 0.0, 1.0, 0.05},
+    {0.0, 0.95, 1.0, 1.0},
+    {0.25, 0.0, 0.75, 0.35},
+    {0.25, 0.25, 0.75, 0.75},
+};
+
+
 hwc2_test_plane_alpha::hwc2_test_plane_alpha(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_plane_alphas:

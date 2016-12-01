@@ -18,7 +18,8 @@
 #include "hwc2_test_layers.h"
 
 hwc2_test_layers::hwc2_test_layers(const std::vector<hwc2_layer_t> &layers,
-        hwc2_test_coverage_t coverage)
+        hwc2_test_coverage_t coverage, int32_t display_width,
+        int32_t display_height)
     : test_layers()
 {
     uint32_t next_z_order = 0;
@@ -26,7 +27,7 @@ hwc2_test_layers::hwc2_test_layers(const std::vector<hwc2_layer_t> &layers,
     for (auto layer: layers)
         test_layers.emplace(std::piecewise_construct,
                 std::forward_as_tuple(layer), std::forward_as_tuple(coverage,
-                next_z_order++));
+                display_width, display_height, next_z_order++));
 }
 
 std::string hwc2_test_layers::dump() const
