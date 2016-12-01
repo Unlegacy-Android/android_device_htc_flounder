@@ -17,6 +17,8 @@
 #ifndef _HWC2_TEST_LAYER_H
 #define _HWC2_TEST_LAYER_H
 
+#include <android-base/unique_fd.h>
+
 #include "hwc2_test_properties.h"
 
 #define HWC2_INCLUDE_STRINGIFICATION
@@ -32,6 +34,9 @@ public:
 
     std::string dump() const;
 
+    int get_buffer(buffer_handle_t *out_handle,
+            android::base::unique_fd *out_acquire_fence);
+
     void reset();
 
     hwc2_blend_mode_t      get_blend_mode() const;
@@ -40,6 +45,7 @@ public:
     const std::pair<int32_t, int32_t> get_cursor() const;
     android_dataspace_t    get_dataspace() const;
     const hwc_rect_t       get_display_frame() const;
+    android_pixel_format_t get_format() const;
     float                  get_plane_alpha() const;
     const hwc_frect_t      get_source_crop() const;
     const hwc_region_t     get_surface_damage() const;
@@ -53,16 +59,19 @@ public:
     bool advance_cursor();
     bool advance_dataspace();
     bool advance_display_frame();
+    bool advance_format();
     bool advance_plane_alpha();
     bool advance_source_crop();
     bool advance_surface_damage();
     bool advance_transform();
 
 private:
-    std::array<hwc2_test_container *, 10> properties = {{
+    std::array<hwc2_test_container *, 11> properties = {{
         &blend_mode, &color, &composition, &cursor, &dataspace, &display_frame,
-        &plane_alpha, &source_crop, &surface_damage, &transform
+        &format, &plane_alpha, &source_crop, &surface_damage, &transform
     }};
+
+    hwc2_test_buffer buffer;
 
     hwc2_test_blend_mode blend_mode;
     hwc2_test_buffer_area buffer_area;
@@ -71,6 +80,7 @@ private:
     hwc2_test_cursor cursor;
     hwc2_test_dataspace dataspace;
     hwc2_test_display_frame display_frame;
+    hwc2_test_format format;
     hwc2_test_plane_alpha plane_alpha;
     hwc2_test_source_crop source_crop;
     hwc2_test_surface_damage surface_damage;

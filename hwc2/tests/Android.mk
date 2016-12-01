@@ -24,13 +24,27 @@ LOCAL_CFLAGS += \
     -g \
     -Wall -Wextra \
     -Werror \
-    -fno-builtin
-LOCAL_SHARED_LIBRARIES := libcutils libutils libhardware liblog
-LOCAL_STATIC_LIBRARIES := libbase libadf libadfhwc
+    -fno-builtin \
+    -DEGL_EGLEXT_PROTOTYPES \
+    -DGL_GLEXT_PROTOTYPES
+LOCAL_SHARED_LIBRARIES := \
+    libcutils \
+    libutils \
+    libhardware \
+    libEGL \
+    libGLESv2 \
+    libui \
+    libgui \
+    liblog
+LOCAL_STATIC_LIBRARIES := \
+    libbase \
+    libadf \
+    libadfhwc
 LOCAL_SRC_FILES := \
     hwc2_test.cpp \
     hwc2_test_properties.cpp \
     hwc2_test_layer.cpp \
-    hwc2_test_layers.cpp
+    hwc2_test_layers.cpp \
+    hwc2_test_buffer.cpp
 
 include $(BUILD_NATIVE_TEST)

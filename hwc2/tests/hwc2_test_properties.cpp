@@ -27,6 +27,7 @@ hwc2_test_buffer_area::hwc2_test_buffer_area(hwc2_test_coverage_t coverage,
             default_scalars),
       display_width(display_width),
       display_height(display_height),
+      buffer(nullptr),
       source_crop(nullptr),
       surface_damage(nullptr),
       buffer_areas()
@@ -41,6 +42,15 @@ std::string hwc2_test_buffer_area::dump() const
     dmp << "\tbuffer area: width " << curr.first << ", height " << curr.second
             << "\n";
     return dmp.str();
+}
+
+void hwc2_test_buffer_area::set_dependent(hwc2_test_buffer *buffer)
+{
+    this->buffer = buffer;
+    if (buffer) {
+        const std::pair<int32_t, int32_t> &curr = get();
+        buffer->update_buffer_area(curr.first, curr.second);
+    }
 }
 
 void hwc2_test_buffer_area::set_dependent(hwc2_test_source_crop *source_crop)
@@ -80,6 +90,8 @@ void hwc2_test_buffer_area::update_dependents()
 {
     const std::pair<int32_t, int32_t> &curr = get();
 
+    if (buffer)
+        buffer->update_buffer_area(curr.first, curr.second);
     if (source_crop)
         source_crop->update_buffer_area(curr.first, curr.second);
     if (surface_damage)
@@ -380,6 +392,67 @@ const std::vector<hwc_frect_t> hwc2_test_display_frame::complete_frect_scalars =
     {0.0, 0.95, 1.0, 1.0},
     {0.25, 0.0, 0.75, 0.35},
     {0.25, 0.25, 0.75, 0.75},
+};
+
+
+hwc2_test_format::hwc2_test_format(hwc2_test_coverage_t coverage)
+    : hwc2_test_property(
+            (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_formats:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_formats:
+            default_formats),
+      buffer(nullptr) { }
+
+std::string hwc2_test_format::dump() const
+{
+    std::stringstream dmp;
+    dmp << "\tformat: " << get() << "\n";
+    return dmp.str();
+}
+
+void hwc2_test_format::set_dependent(hwc2_test_buffer *buffer)
+{
+    this->buffer = buffer;
+    update_dependents();
+}
+
+void hwc2_test_format::update_dependents()
+{
+    if (buffer)
+        buffer->update_format(get());
+}
+
+const std::vector<android_pixel_format_t> hwc2_test_format::default_formats = {
+    HAL_PIXEL_FORMAT_RGBA_8888,
+};
+
+const std::vector<android_pixel_format_t> hwc2_test_format::basic_formats = {
+    HAL_PIXEL_FORMAT_RGBA_8888,
+    HAL_PIXEL_FORMAT_RGBX_8888,
+};
+
+const std::vector<android_pixel_format_t> hwc2_test_format::complete_formats = {
+    HAL_PIXEL_FORMAT_RGBA_8888,
+    HAL_PIXEL_FORMAT_RGBX_8888,
+    HAL_PIXEL_FORMAT_RGB_888,
+    HAL_PIXEL_FORMAT_RGB_565,
+    HAL_PIXEL_FORMAT_BGRA_8888,
+    HAL_PIXEL_FORMAT_YV12,
+    HAL_PIXEL_FORMAT_Y8,
+    HAL_PIXEL_FORMAT_Y16,
+    HAL_PIXEL_FORMAT_RAW16,
+    HAL_PIXEL_FORMAT_RAW10,
+    HAL_PIXEL_FORMAT_RAW12,
+    HAL_PIXEL_FORMAT_RAW_OPAQUE,
+    HAL_PIXEL_FORMAT_BLOB,
+    HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+    HAL_PIXEL_FORMAT_YCbCr_420_888,
+    HAL_PIXEL_FORMAT_YCbCr_422_888,
+    HAL_PIXEL_FORMAT_YCbCr_444_888,
+    HAL_PIXEL_FORMAT_FLEX_RGB_888,
+    HAL_PIXEL_FORMAT_FLEX_RGBA_8888,
+    HAL_PIXEL_FORMAT_YCbCr_422_SP,
+    HAL_PIXEL_FORMAT_YCrCb_420_SP,
+    HAL_PIXEL_FORMAT_YCbCr_422_I,
 };
 
 
