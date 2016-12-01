@@ -37,6 +37,7 @@ public:
     hwc2_blend_mode_t      get_blend_mode() const;
     const hwc_color_t      get_color() const;
     hwc2_composition_t     get_composition() const;
+    const std::pair<int32_t, int32_t> get_cursor() const;
     android_dataspace_t    get_dataspace() const;
     const hwc_rect_t       get_display_frame() const;
     float                  get_plane_alpha() const;
@@ -48,6 +49,7 @@ public:
     bool advance_buffer_area();
     bool advance_color();
     bool advance_composition();
+    bool advance_cursor();
     bool advance_dataspace();
     bool advance_display_frame();
     bool advance_plane_alpha();
@@ -55,8 +57,8 @@ public:
     bool advance_transform();
 
 private:
-    std::array<hwc2_test_container *, 8> properties = {{
-        &blend_mode, &color, &composition, &dataspace, &display_frame,
+    std::array<hwc2_test_container *, 9> properties = {{
+        &blend_mode, &color, &composition, &cursor, &dataspace, &display_frame,
         &plane_alpha, &source_crop, &transform
     }};
 
@@ -64,6 +66,7 @@ private:
     hwc2_test_buffer_area buffer_area;
     hwc2_test_color color;
     hwc2_test_composition composition;
+    hwc2_test_cursor cursor;
     hwc2_test_dataspace dataspace;
     hwc2_test_display_frame display_frame;
     hwc2_test_plane_alpha plane_alpha;

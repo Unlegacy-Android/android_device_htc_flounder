@@ -155,6 +155,28 @@ protected:
 };
 
 
+class hwc2_test_cursor : public hwc2_test_property<std::pair<int32_t, int32_t>> {
+public:
+    hwc2_test_cursor(hwc2_test_coverage_t coverage, int32_t display_width,
+            int32_t display_height);
+
+    std::string dump() const;
+
+protected:
+    void update();
+
+    const std::vector<float> &scalars;
+    static const std::vector<float> default_scalars;
+    static const std::vector<float> basic_scalars;
+    static const std::vector<float> complete_scalars;
+
+    int32_t display_width;
+    int32_t display_height;
+
+    std::vector<std::pair<int32_t, int32_t>> cursors;
+};
+
+
 class hwc2_test_dataspace : public hwc2_test_property<android_dataspace_t> {
 public:
     hwc2_test_dataspace(hwc2_test_coverage_t coverage);

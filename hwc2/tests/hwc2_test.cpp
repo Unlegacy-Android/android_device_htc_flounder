@@ -367,6 +367,25 @@ public:
                 " type " << getCompositionName(composition);
     }
 
+    void set_cursor_position(hwc2_display_t display, hwc2_layer_t layer,
+            int32_t x, int32_t y, hwc2_error_t *out_err)
+    {
+        HWC2_PFN_SET_CURSOR_POSITION pfn = (HWC2_PFN_SET_CURSOR_POSITION)
+                get_function(HWC2_FUNCTION_SET_CURSOR_POSITION);
+        ASSERT_TRUE(pfn) << "failed to get function";
+
+        *out_err = (hwc2_error_t) pfn(hwc2_device, display, layer, x, y);
+    }
+
+    void set_cursor_position(hwc2_display_t display, hwc2_layer_t layer,
+            int32_t x, int32_t y)
+    {
+        hwc2_error_t err = HWC2_ERROR_NONE;
+        ASSERT_NO_FATAL_FAILURE(set_cursor_position(display, layer, x, y,
+                &err));
+        ASSERT_EQ(err, HWC2_ERROR_NONE) << "failed to set cursor position";
+    }
+
     void set_layer_blend_mode(hwc2_display_t display, hwc2_layer_t layer,
             hwc2_blend_mode_t mode, hwc2_error_t *out_err)
     {
@@ -1496,6 +1515,104 @@ TEST_F(hwc2_test, SET_LAYER_COMPOSITION_TYPE_update)
             EXPECT_TRUE(err == HWC2_ERROR_NONE || err == HWC2_ERROR_UNSUPPORTED)
                      << "returned wrong error code";
         } while (test_layer.advance_composition());
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+    }
+}
+
+TEST_F(hwc2_test, SET_CURSOR_POSITION)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+    int32_t width, height;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE, width, height);
+
+        do {
+            ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+            std::pair<int32_t, int32_t> cursor = test_layer.get_cursor();
+            EXPECT_NO_FATAL_FAILURE(set_cursor_position(display, layer,
+                    cursor.first, cursor.second));
+
+            ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+        } while (test_layer.advance_cursor());
+    }
+}
+
+TEST_F(hwc2_test, SET_CURSOR_POSITION_bad_display)
+{
+    hwc2_display_t display = HWC_NUM_PHYSICAL_DISPLAY_TYPES + 1;
+    hwc2_layer_t layer = 0;
+    int32_t x = 0, y = 0;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(set_cursor_position(display, layer, x, y, &err));
+    EXPECT_EQ(err, HWC2_ERROR_BAD_DISPLAY) << "returned wrong error code";
+}
+
+TEST_F(hwc2_test, SET_CURSOR_POSITION_bad_layer)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer = 0;
+    int32_t width, height;
+    hwc2_error_t err = HWC2_ERROR_NONE;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_DEFAULT, width, height);
+
+        std::pair<int32_t, int32_t> cursor = test_layer.get_cursor();
+
+        ASSERT_NO_FATAL_FAILURE(set_cursor_position(display, layer,
+                cursor.first, cursor.second, &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        EXPECT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_cursor_position(display, layer + 1,
+                cursor.first, cursor.second, &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+
+        ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
+
+        ASSERT_NO_FATAL_FAILURE(set_cursor_position(display, layer,
+                cursor.first, cursor.second, &err));
+        EXPECT_EQ(err, HWC2_ERROR_BAD_LAYER) << "returned wrong error code";
+    }
+}
+
+TEST_F(hwc2_test, SET_CURSOR_POSITION_update)
+{
+    hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+    std::vector<hwc2_config_t> configs;
+    hwc2_layer_t layer;
+    int32_t width, height;
+
+    ASSERT_NO_FATAL_FAILURE(get_display_configs(display, &configs));
+
+    for (hwc2_config_t config: configs) {
+        ASSERT_NO_FATAL_FAILURE(set_active_config(display, config));
+        ASSERT_NO_FATAL_FAILURE(get_active_dimensions(display, &width, &height));
+        hwc2_test_layer test_layer(HWC2_TEST_COVERAGE_COMPLETE, width, height);
+
+        ASSERT_NO_FATAL_FAILURE(create_layer(display, &layer));
+
+        do {
+            std::pair<int32_t, int32_t> cursor = test_layer.get_cursor();
+            EXPECT_NO_FATAL_FAILURE(set_cursor_position(display, layer,
+                    cursor.first, cursor.second));
+        } while (test_layer.advance_cursor());
 
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
     }

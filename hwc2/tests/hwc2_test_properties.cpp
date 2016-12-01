@@ -188,6 +188,56 @@ const std::vector<hwc2_composition_t> hwc2_test_composition::complete_compositio
 };
 
 
+hwc2_test_cursor::hwc2_test_cursor(hwc2_test_coverage_t coverage,
+        int32_t display_width, int32_t display_height)
+    : hwc2_test_property(cursors),
+      scalars((coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_scalars:
+            (coverage == HWC2_TEST_COVERAGE_BASIC)? basic_scalars:
+            default_scalars),
+      display_width(display_width),
+      display_height(display_height),
+      cursors()
+{
+    update();
+}
+
+std::string hwc2_test_cursor::dump() const
+{
+    std::stringstream dmp;
+    const std::pair<int32_t, int32_t> &curr = get();
+    dmp << "\tcursor: x " << curr.first << ", y " << curr.second << "\n";
+    return dmp.str();
+}
+
+void hwc2_test_cursor::update()
+{
+    cursors.clear();
+
+    if (display_width == 0 && display_height == 0) {
+        cursors.push_back({0, 0});
+        return;
+    }
+
+    for (uint32_t left_idx: scalars)
+        for (uint32_t top_idx: scalars)
+            cursors.push_back(
+                    {scalars.at(left_idx) * (display_width),
+                    scalars.at(top_idx) * (display_height)});
+}
+
+const std::vector<float> hwc2_test_cursor::default_scalars = {
+    0.0f
+};
+
+const std::vector<float> hwc2_test_cursor::basic_scalars = {
+    0.0f, 0.5f
+};
+
+const std::vector<float> hwc2_test_cursor::complete_scalars = {
+    0.0f, 0.25f, 0.5f, 0.75f,
+};
+
+
 hwc2_test_dataspace::hwc2_test_dataspace(hwc2_test_coverage_t coverage)
     : hwc2_test_property(
             (coverage == HWC2_TEST_COVERAGE_COMPLETE)? complete_dataspaces:
