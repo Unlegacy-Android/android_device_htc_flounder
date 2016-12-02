@@ -205,6 +205,10 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.drm@1.0-impl
 
+# GNSS HAL
+PRODUCT_PACKAGES += \
+   android.hardware.gnss@1.0-impl
+
 # Light HAL
 PRODUCT_PACKAGES += \
     android.hardware.light@2.0-impl \
