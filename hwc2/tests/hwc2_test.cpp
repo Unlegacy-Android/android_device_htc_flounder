@@ -2778,3 +2778,11 @@ TEST_F(hwc2_test, SET_LAYER_Z_ORDER_update)
         ASSERT_NO_FATAL_FAILURE(destroy_layer(display, layer));
     }
 }
+
+TEST_F(hwc2_test, SET_LAYER_SIDEBAND_STREAM)
+{
+    hwc2_function_pointer_t pfn = get_function(
+            HWC2_FUNCTION_SET_LAYER_SIDEBAND_STREAM);
+    EXPECT_FALSE(pfn) << "flounder doesn't support sideband stream so"
+            " get_function should return nullptr";
+}
