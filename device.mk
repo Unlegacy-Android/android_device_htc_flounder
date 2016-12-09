@@ -100,6 +100,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 # Wi-Fi Pacages
 PRODUCT_PACKAGES += \
+    android.hardware.wifi@1.0-service \
     libwpa_client \
     hostapd \
     wificond \
