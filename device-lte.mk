@@ -18,16 +18,23 @@
 #
 # Everything in this directory will become public
 
+# the actual meat of the device-specific product definition
+$(call inherit-product, device/htc/flounder/device.mk)
+
+# RIL Packages
 PRODUCT_PACKAGES += \
-    CarrierConfig
+        rild \
+        CarrierConfig
 
+# RIL Properties
 PRODUCT_PROPERTY_OVERRIDES += \
-    ro.telephony.default_cdma_sub=0
-
-# LTE, CDMA, GSM/WCDMA
-PRODUCT_PROPERTY_OVERRIDES += \
+    ro.telephony.default_cdma_sub=0 \
     ro.telephony.default_network=9 \
     telephony.lteOnCdmaDevice=1
 
+# Device Overlays
 DEVICE_PACKAGE_OVERLAYS += \
-    $(LOCAL_PATH)/lte_only_overlay
+    $(LOCAL_PATH)/overlay/lte
+
+# Vendor Blobs
+$(call inherit-product-if-exists, vendor/htc/flounder_lte/device-vendor.mk)

@@ -21,19 +21,14 @@
 # lines, aosp and flounder, hence its name.
 #
 
-# Live Wallpapers
-PRODUCT_PACKAGES += \
-        LiveWallpapersPicker \
-        librs_jni \
-        rild
-
+# Inherit from flounder device
+$(call inherit-product, device/htc/flounder/device-lte.mk)
 # Inherit from those products. Most specific first.
-$(call inherit-product, device/htc/flounder/product_64_only.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_base.mk)
 
-PRODUCT_NAME := aosp_flounder_64_only
-PRODUCT_DEVICE := flounder
-PRODUCT_BRAND := Android
-PRODUCT_MODEL := AOSP on Flounder (64-bit only)
+PRODUCT_NAME := aosp_flounder_lte
+PRODUCT_DEVICE := flounder_lte
+PRODUCT_BRAND := Google
+PRODUCT_MODEL := Nexus 9 LTE
 PRODUCT_MANUFACTURER := HTC
 PRODUCT_RESTRICT_VENDOR_FILES := owner path
