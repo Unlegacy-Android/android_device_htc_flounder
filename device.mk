@@ -220,7 +220,7 @@ PRODUCT_PACKAGES += \
 
 # Keymaster HAL
 PRODUCT_PACKAGES += \
-    android.hardware.keymaster@2.0-impl
+    android.hardware.keymaster@3.0-impl
 
 # Light HAL
 PRODUCT_PACKAGES += \
