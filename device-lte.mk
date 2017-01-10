@@ -36,5 +36,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
 DEVICE_PACKAGE_OVERLAYS += \
     $(LOCAL_PATH)/overlay/lte
 
+# Assert for recovery compatibility
+TARGET_OTA_ASSERT_DEVICE := flounder,flounder_lte
+
 # Vendor Blobs
 $(call inherit-product-if-exists, vendor/htc/flounder_lte/device-vendor.mk)
