@@ -117,6 +117,10 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # Wi-Fi Dependencies
 $(call inherit-product-if-exists, hardware/broadcom/wlan/bcmdhd/firmware/bcm4354/device-bcm.mk)
 
+# Bluetooth Packages
+PRODUCT_PACKAGES+= \
+    android.hardware.bluetooth@1.0-impl
+
 # Bluetooth Files
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/bluetooth/bcm4350b1.hcd:$(TARGET_COPY_OUT_VENDOR)/firmware/bcm4350b1.hcd \
