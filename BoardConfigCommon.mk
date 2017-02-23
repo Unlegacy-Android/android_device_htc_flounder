@@ -138,4 +138,3 @@ BUILD_EMULATOR := false
 
 # Security
 BOARD_SEPOLICY_DIRS += device/htc/flounder/sepolicy
-BOARD_SECCOMP_POLICY += device/htc/flounder/seccomp
