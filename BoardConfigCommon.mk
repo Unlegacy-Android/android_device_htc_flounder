@@ -101,6 +101,9 @@ BOARD_USES_GENERIC_INVENSENSE := false
 TARGET_NO_RPC := true
 BOARD_USES_QCOM_HARDWARE_GPS := true
 
+# HIDL
+DEVICE_MANIFEST_FILE := device/htc/flounder/manifest.xml
+
 # Wi-Fi
 BOARD_WLAN_DEVICE           := bcmdhd
 WPA_SUPPLICANT_VERSION      := VER_0_8_X
