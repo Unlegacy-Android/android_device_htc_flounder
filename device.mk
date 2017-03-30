@@ -229,6 +229,10 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     VolantisLayout
 
+# Default OMX service to non-Treble
+PRODUCT_PROPERTY_OVERRIDES += \
+     persist.media.treble_omx=false
+
 # Misc Properties
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.opengles.version=196609 \
