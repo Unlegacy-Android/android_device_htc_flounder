@@ -233,7 +233,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.hwui.disable_scissor_opt=true \
     ro.frp.pst=/dev/block/platform/sdhci-tegra.3/by-name/PST \
     ro.ril.def.agps.mode=1 \
-    persist.tegra.compositor=glcomposer
+    persist.tegra.compositor=glcomposer \
+    ro.recents.grid=true
 
 # Device Overlays
 ifneq ($(filter flounder, $(TARGET_PRODUCT)),)
