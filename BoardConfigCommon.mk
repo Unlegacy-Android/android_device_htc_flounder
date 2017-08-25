@@ -63,7 +63,7 @@ KERNEL_TOOLCHAIN_PREFIX := aarch64-linux-android-
 TARGET_KERNEL_SOURCE := kernel/htc/flounder
 TARGET_KERNEL_CONFIG := flounder_defconfig
 BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb
-BOARD_KERNEL_CMDLINE := androidboot.selinux=enforcing
+BOARD_KERNEL_CMDLINE := androidboot.selinux=permissive
 TARGET_PREBUILT_KERNEL := false
 
 # Graphics
@@ -136,5 +136,5 @@ TARGET_COPY_OUT_VENDOR := vendor
 BUILD_EMULATOR := false
 
 # Security
-BOARD_SEPOLICY_DIRS += device/htc/flounder/sepolicy
+#BOARD_SEPOLICY_DIRS += device/htc/flounder/sepolicy
 BOARD_SECCOMP_POLICY += device/htc/flounder/seccomp
