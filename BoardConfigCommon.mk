@@ -83,6 +83,7 @@ BOARD_CHARGER_DISABLE_INIT_BLANK := true
 
 # Bluetooth
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/htc/flounder/bluetooth
+BOARD_CUSTOM_BT_CONFIG := device/htc/flounder/bluetooth/vnd_flounder.txt
 BOARD_HAVE_BLUETOOTH_BCM := true
 
 # Audio
