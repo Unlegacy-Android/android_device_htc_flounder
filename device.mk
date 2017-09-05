@@ -102,6 +102,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PACKAGES += \
     libwpa_client \
     hostapd \
+    wificond \
     wpa_supplicant \
     wpa_supplicant.conf
 
@@ -116,6 +117,11 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 # Wi-Fi Dependencies
 $(call inherit-product-if-exists, hardware/broadcom/wlan/bcmdhd/firmware/bcm4354/device-bcm.mk)
+
+# Bluetooth HAL
+PRODUCT_PACKAGES += \
+    libbt-vendor \
+    android.hardware.bluetooth@1.0-impl
 
 # Bluetooth Files
 PRODUCT_COPY_FILES += \
@@ -132,7 +138,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PACKAGES += \
     nfc_nci.bcm2079x.default \
     NfcNci \
-    Tag
+    Tag \
+    android.hardware.nfc@1.0-impl
 
 # NFC Files
 PRODUCT_COPY_FILES += \
@@ -189,7 +196,8 @@ PRODUCT_PACKAGES += \
     power.flounder \
     lights.flounder \
     sensors.flounder \
-    thermal.flounder
+    thermal.flounder \
+    hwcomposer.flounder
 
 # Filesystem Packages
 PRODUCT_PACKAGES += \
