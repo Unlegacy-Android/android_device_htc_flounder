@@ -119,13 +119,6 @@ TARGET_USES_64_BIT_BINDER := true
 # There are Level 1/2/3. To run HD contents, should be Widevine level 1 security.
 BOARD_WIDEVINE_OEMCRYPTO_LEVEL := 1
 
-# HACK: Build apps as 64b for volantis_64_only
-ifneq (,$(filter ro.zygote=zygote64, $(PRODUCT_DEFAULT_PROPERTY_OVERRIDES)))
-TARGET_PREFER_32_BIT_APPS :=
-TARGET_SUPPORTS_32_BIT_APPS :=
-TARGET_SUPPORTS_64_BIT_APPS := true
-endif
-
 # Use homogeneous space compaction
 ART_USE_HSPACE_COMPACT=true
 

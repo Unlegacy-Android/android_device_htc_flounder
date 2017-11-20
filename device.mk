@@ -26,18 +26,13 @@ PRODUCT_CHARACTERISTICS := tablet,nosdcard
 $(call inherit-product, frameworks/native/build/tablet-10in-xhdpi-2048-dalvik-heap.mk)
 
 # Init Files
-# Copy both flounder/flounder64 files so that ${ro.hardware} can find them
+# Copy both flounder files so that ${ro.hardware} can find them
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/rootdir/init.flounder.rc:root/init.flounder.rc \
     $(LOCAL_PATH)/rootdir/init.flounder.usb.rc:root/init.flounder.usb.rc \
     $(LOCAL_PATH)/rootdir/init.recovery.flounder.rc:root/init.recovery.flounder.rc \
     $(LOCAL_PATH)/rootdir/fstab.flounder:root/fstab.flounder \
-    $(LOCAL_PATH)/rootdir/ueventd.flounder.rc:root/ueventd.flounder.rc \
-    $(LOCAL_PATH)/rootdir/init.flounder.rc:root/init.flounder64.rc \
-    $(LOCAL_PATH)/rootdir/init.flounder.usb.rc:root/init.flounder64.usb.rc \
-    $(LOCAL_PATH)/rootdir/fstab.flounder:root/fstab.flounder64 \
-    $(LOCAL_PATH)/rootdir/init.recovery.flounder.rc:root/init.recovery.flounder64.rc \
-    $(LOCAL_PATH)/rootdir/ueventd.flounder.rc:root/ueventd.flounder64.rc
+    $(LOCAL_PATH)/rootdir/ueventd.flounder.rc:root/ueventd.flounder.rc
 
 # These are the hardware-specific features
 PRODUCT_COPY_FILES += \
@@ -265,8 +260,7 @@ endif
 # Only include verity on user builds for CM
 ifeq ($(TARGET_BUILD_VARIANT),user)
 PRODUCT_COPY_FILES += \
-    device/htc/flounder/fstab-verity.flounder:root/fstab.flounder \
-    device/htc/flounder/fstab-verity.flounder:root/fstab.flounder64
+    device/htc/flounder/fstab-verity.flounder:root/fstab.flounder
 $(call inherit-product, build/target/product/verity.mk)
 PRODUCT_SUPPORTS_BOOT_SIGNER := false
 PRODUCT_SYSTEM_VERITY_PARTITION := /dev/block/platform/sdhci-tegra.3/by-name/APP
